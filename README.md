@@ -12,11 +12,13 @@ Or through `git update-index --no-assume-unchanged filepath` when removed from c
 
 ## Known Issues
 
-- There is text inconsistency bug if user does not save each change in appearing text editor.
-- Each time changelist is editer - file editor appears and waits user to save changes. This will be remade leter to silent changes.
 - This extension may have some parsing issues, and code will be refactored sooner or later.
 
 ## Release Notes
+
+## 0.1.2
+
+- Add silent save
 
 ## 0.1.1
 
