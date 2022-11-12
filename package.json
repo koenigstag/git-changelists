@@ -11,6 +11,7 @@
     "type": "git",
     "url": "https://github.com/koenigstag/git-changelists.git"
   },
+  "license": "GPL-3.0-only",
   "categories": [
     "Other"
   ],
