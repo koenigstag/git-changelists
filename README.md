@@ -18,6 +18,10 @@ Or through `git update-index --no-assume-unchanged filepath` when removed from c
 
 ## Release Notes
 
+## 0.1.1
+
+- Added extension logo and change log file
+
 ### 0.1.0
 
 Added working prototype with GUI
