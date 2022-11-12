@@ -66,6 +66,19 @@ export class ChangeListView {
       context.subscriptions.push(ChangeListView.view);
     });
 
+    vscode.workspace.onDidChangeTextDocument((e) => {
+      const { document } = e;
+      if (
+        !document.isUntitled &&
+        (document.uri.fsPath.includes('.git/info/exclude') ||
+          document.uri.fsPath.includes('.git\\info\\exclude'))
+      ) {
+        setTimeout(() => {
+          document.save();
+        }, 300);
+      }
+    });
+
     let disposable = vscode.commands.registerCommand(
       'git-changelists.init',
       async () => {
@@ -215,15 +228,17 @@ export class ChangeListView {
           fileName
         );
       vscode.window.showInformationMessage(text);
-      const stdout = child.execSync(
-        'git update-index --no-assume-unchanged ' + fileName,
-        {
-          cwd: wsPath,
-          encoding: 'utf8',
-        }
-      );
+      try {
+        const stdout = child.execSync(
+          'git update-index --no-assume-unchanged ' + fileName,
+          {
+            cwd: wsPath,
+            encoding: 'utf8',
+          }
+        );
 
-      console.log(stdout.toString());
+        console.log(stdout.toString());
+      } catch (error) {}
     });
 
     vscode.commands.registerCommand(
@@ -269,15 +284,17 @@ export class ChangeListView {
             fileName
           );
           vscode.window.showInformationMessage(text);
-          const stdout = child.execSync(
-            'git update-index --assume-unchanged ' + fileName,
-            {
-              cwd: wsPath,
-              encoding: 'utf8',
-            }
-          );
+          try {
+            const stdout = child.execSync(
+              'git update-index --assume-unchanged ' + fileName,
+              {
+                cwd: wsPath,
+                encoding: 'utf8',
+              }
+            );
 
-          console.log(stdout.toString());
+            console.log(stdout.toString());
+          } catch (error) {}
         }
       }
     );
@@ -340,7 +357,8 @@ export class ChangeListView {
       newContent
     );
 
-    vscode.workspace.applyEdit(wsEdit);
+    await vscode.workspace.applyEdit(wsEdit);
+
   }
 
   private async writeTreeToExclude() {
@@ -366,7 +384,7 @@ export class ChangeListView {
       treeText + '\n\n'
     );
 
-    vscode.workspace.applyEdit(wsEdit);
+    await vscode.workspace.applyEdit(wsEdit);
 
     // await writeNewExcludeContent(this.config.gitRootPath, treeLines);
   }
