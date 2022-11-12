@@ -2,13 +2,11 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { ChangeListView } from './ChangelistView';
+import registerCommands from './commands';
 
 export const EXTENSION_ID = 'git-changelists';
 
-const checkPrerequisites = (
-  context: vscode.ExtensionContext,
-  logger: vscode.OutputChannel
-) => {
+const checkPrerequisites = (logger: vscode.OutputChannel) => {
   if (
     !vscode.workspace.workspaceFolders ||
     vscode.workspace.workspaceFolders.length === 0
@@ -31,7 +29,7 @@ const checkPrerequisites = (
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   const logger = vscode.window.createOutputChannel('Git Changelists');
 
   logger.appendLine(`Extension "${EXTENSION_ID}" is now active!`);
@@ -40,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   /*  */
 
-  const result = checkPrerequisites(context, logger);
+  const result = checkPrerequisites(logger);
 
   if (!vscode.workspace.workspaceFolders || result === 'exit') {
     return;
@@ -56,11 +54,16 @@ export function activate(context: vscode.ExtensionContext) {
 
   const gitRootPath = `${workspaceRootPath}/.git`; // TODO fix
 
-  logger.appendLine('Is Git repo active: ' + true); // TODO add valid check
+  const config = vscode.workspace.getConfiguration();
+  const gitConf: any = config.get('git');
+
+  const gitEnabled = gitConf.enabled;
+
+  logger.appendLine('Is Git repo active: ' + gitEnabled); // TODO add valid check
 
   /*  */
 
-  new ChangeListView(
+  const viewInstance = new ChangeListView(
     context,
     {
       id: `${EXTENSION_ID}.views.explorer`,
@@ -69,12 +72,9 @@ export function activate(context: vscode.ExtensionContext) {
     logger
   );
 
-  // Use the console to output diagnostic information (console.log) and errors (console.error)
-  // This line of code will only be executed once when your extension is activated
+  registerCommands({ viewInstance, context, logger });
 
-  // The command has been defined in the package.json file
-  // Now provide the implementation of the command with registerCommand
-  // The commandId parameter must match the command field in package.json
+  viewInstance.refresh();
 }
 
 // This method is called when your extension is deactivated

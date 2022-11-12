@@ -1,48 +1,96 @@
 import * as fs from 'fs/promises';
+import {
+  changelistNameRegex,
+  changelistStartRegex,
+  removeSpecialSymbs,
+  workzoneEndRegex,
+  workzoneStartRegex,
+} from './constants/regexp';
+import { contentToLines, linesToText } from './utils';
 
-export const getExcludeContent = async (gitRootPath: string) => {
-  return await fs.readFile(`${gitRootPath}/info/exclude`, 'utf-8');
-};
+export type Changelist = { lineIndex: number; name: string; files: string[] };
+export type WorkzoneIndexes = { startIndex: number; endIndex: number };
 
-export const checkIfWorkzoneExists = (content: string) => {
-  try {
-    const lines = content.split(newLineRegex);
+export class GitExcludeParse {
+  content: string = '';
 
-    const workzone = getExtensionWorkzone(lines);
-    return true;
-  } catch (error) {
-    return false;
+  constructor(private readonly gitRootPath: string) {}
+
+  async getExcludeContent(): Promise<string> {
+    this.content = await FSAPI.getExcludeContent(this.gitRootPath);
+
+    return this.content;
   }
-};
 
-export const prepareExcludeFile = async (content: string) => {
-  return `${content.trim()}\n\n# ==== GIT CHANGELISTS ====\n\n# ==== END: GIT CHANGELISTS ====\n`;
-};
+  async getExcludeContentLines(): Promise<string[]> {
+    const content = await this.getExcludeContent();
 
-export const newLineRegex = /\r?\n/;
-const changelistStartRegex = /^# ==== ([\w ]+) ====$/;
-export const getChangelists = (
-  content: string
-): {
-  lineIndex: number;
-  name: string;
-  files: string[];
-}[] => {
-  const lines = content.split(newLineRegex);
+    const lines = contentToLines(content);
 
-  const workzoneLines = getExtensionWorkzone(lines);
+    return lines;
+  }
 
-  const changeLists: { lineIndex: number; name: string; files?: string[] }[] =
-    [];
-  workzoneLines.forEach((line, index) => {
-    if (changelistStartRegex.test(line.trim())) {
-      const name = changelistStartRegex.exec(line.trim()) as any;
-      changeLists.push({ lineIndex: index, name: name[1] });
+  static getWorkzoneIndexes(contentLines: string[]): WorkzoneIndexes {
+    const startIndex = contentLines.findIndex((line) =>
+      workzoneStartRegex.test(line.trim())
+    );
+    const endIndex = contentLines.findIndex((line) =>
+      workzoneEndRegex.test(line.trim())
+    );
+
+    if (startIndex === -1 || endIndex === -1) {
+      throw new RangeError('Workzone not found');
     }
-  });
 
-  const withFiles: { lineIndex: number; name: string; files: string[] }[] =
-    changeLists.map((item, index, arr) => {
+    return { startIndex, endIndex };
+  }
+
+  getWorkzoneLines(contentLines: string[]) {
+    const { startIndex, endIndex } =
+      GitExcludeParse.getWorkzoneIndexes(contentLines);
+
+    return contentLines.slice(startIndex + 1, endIndex);
+  }
+
+  checkIfWorkzoneExists(contentLines: string[]) {
+    try {
+      GitExcludeParse.getWorkzoneIndexes(contentLines);
+
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  transformChangelistArrayToTree(changelists: Changelist[]) {
+    const tree = new Map<string, { [key: string]: any }>();
+    changelists.forEach((item) => {
+      tree.set(item.name, {
+        ...item.files
+          .map((file) => ({ [file]: {} }))
+          .reduce((acc, item) => {
+            return Object.assign(acc, item);
+          }, {}),
+      });
+    });
+
+    return Object.fromEntries(tree);
+  }
+
+  getChangelistArrayFromContent(contentLines: string[]): Changelist[] {
+    const workzoneLines = this.getWorkzoneLines(contentLines);
+
+    const changeLists: Changelist[] = [];
+
+    // TODO refactor to single loop
+    workzoneLines.forEach((line, index) => {
+      if (changelistStartRegex.test(line.trim())) {
+        const name = changelistStartRegex.exec(line.trim()) as any;
+        changeLists.push({ lineIndex: index, name: name[1], files: [] });
+      }
+    });
+
+    const withFiles: Changelist[] = changeLists.map((item, index, arr) => {
       const nextIndex =
         arr[index + 1]?.lineIndex < workzoneLines.length
           ? arr[index + 1]?.lineIndex
@@ -54,95 +102,96 @@ export const getChangelists = (
       return { ...item, files };
     });
 
-  return withFiles;
-};
-
-export const transformChangelistToTree = (
-  list: { name: string; files: string[] }[]
-) => {
-  const tree = new Map<string, { [key: string]: any }>();
-  list.forEach((item) => {
-    tree.set(item.name, {
-      ...item.files
-        .map((file) => ({ [file]: {} }))
-        .reduce((acc, item) => {
-          return Object.assign(acc, item);
-        }, {}),
-    });
-  });
-
-  return Object.fromEntries(tree);
-};
-
-const workzoneStartRegex = /^# ==== GIT CHANGELISTS ====$/;
-export const getWorkzoneStartIndex = (lines: string[]) => {
-  return lines.findIndex((line) => workzoneStartRegex.test(line.trim()));
-};
-
-const workzoneEndRegex = /^# ==== END: GIT CHANGELISTS ====$/;
-export const getWorkzoneEndIndex = (lines: string[]) => {
-  return lines.findIndex((line) => workzoneEndRegex.test(line.trim()));
-};
-
-export const getExtensionWorkzone = (lines: string[]) => {
-  const startIndex = getWorkzoneStartIndex(lines);
-  const endIndex = getWorkzoneEndIndex(lines);
-
-  if (startIndex === -1 || endIndex === -1) {
-    throw new RangeError('Workzone not found');
+    return withFiles;
   }
 
-  return lines.slice(startIndex + 1, endIndex);
-};
+  getOtherContent(originalContent: string) {
 
-export const treeToLines = (tree: { [key: string]: any }) => {
-  return Object.entries(tree)
-    .map(([name, items]) => {
-      return [`# ==== ${name} ====`, Object.keys(items)];
-    })
-    .flat(2);
-};
+    const lines = contentToLines(originalContent);
+  
+    const { startIndex, endIndex } = GitExcludeParse.getWorkzoneIndexes(lines);
+  
+    return linesToText([linesToText(lines.slice(0, startIndex)).trim(), linesToText(lines.slice(endIndex + 1, lines.length)).trim()]);
+  }
+}
 
-export const treeToText = (tree: { [key: string]: any }) => {
-  return treeToLines(tree).join('\n');
-};
+export class GitExcludeStringify {
+  constructor(private readonly gitRootPath: string) {}
 
-export const getWorkzoneIndexes = async (gitRootPath: string) => {
-  const content = await getExcludeContent(gitRootPath);
+  prepareExcludeContent(oldContent: string, tree: { [key: string]: any } = {}) {
+    const startWZLine = removeSpecialSymbs(workzoneStartRegex.source);
+    const endWZLine = removeSpecialSymbs(workzoneEndRegex.source);
 
-  const contentLines = content.split(newLineRegex);
+    const text = this.treeToText(tree);
 
-  const startIndex = getWorkzoneStartIndex(contentLines);
-  const endIndex = getWorkzoneEndIndex(contentLines);
+    return `${oldContent.trim()}
 
-  return { startIndex, endIndex };
-};
+${startWZLine}
+${text}
 
-export const replaceWorkzoneInContent = (
-  contentLines: string[],
-  treeLines: string[]
-) => {
-  const startIndex = getWorkzoneStartIndex(contentLines);
-  const endIndex = getWorkzoneEndIndex(contentLines);
+${endWZLine}
+`;
+  }
 
-  contentLines.splice(startIndex + 1, endIndex - startIndex - 1, ...treeLines);
+  treeToLines(tree: { [key: string]: any }) {
+    return Object.entries(tree)
+      .map(([name, items]) => {
+        return [
+          '\n' + removeSpecialSymbs(
+            changelistStartRegex.source.replace(
+              changelistNameRegex.source,
+              name
+            )
+          ),
+          ...Object.keys(items),
+        ];
+      })
+      .flat(2);
+  }
 
-  return contentLines;
-};
+  treeToText(tree: { [key: string]: any }) {
+    return linesToText(this.treeToLines(tree));
+  }
 
-export const writeNewExcludeContent = async (
-  gitRootPath: string,
-  treeLines: string[]
-) => {
-  const content = await getExcludeContent(gitRootPath);
+  // unused
+  replaceWorkzoneInContent(contentLines: string[], treeLines: string[]) {
+    const { startIndex, endIndex } =
+      GitExcludeParse.getWorkzoneIndexes(contentLines);
 
-  const lines = content.split(newLineRegex);
+    contentLines.splice(
+      startIndex + 1,
+      endIndex - startIndex - 1,
+      ...treeLines
+    );
 
-  const newLines = replaceWorkzoneInContent(lines, treeLines);
+    return contentLines;
+  }
 
-  await writeExclude(gitRootPath, newLines.join('\n'));
-};
+  // unused
+  async writeNewExcludeContent(treeLines: string[]) {
+    const content = await FSAPI.getExcludeContent(this.gitRootPath);
 
-export const writeExclude = async (gitRootPath: string, content: string) => {
-  await fs.writeFile(gitRootPath, content, 'utf-8');
-};
+    const lines = contentToLines(content);
+
+    const newLines = this.replaceWorkzoneInContent(lines, treeLines);
+
+    await FSAPI.writeExclude(this.gitRootPath, newLines.join('\n'));
+  }
+}
+
+export class FSAPI {
+  static filePath = '/info/exclude';
+
+  static async getExcludeContent(gitRootPath: string) {
+    return await fs.readFile(`${gitRootPath}/${FSAPI.filePath}`, 'utf-8');
+  }
+
+  // unused
+  static async writeExclude(gitRootPath: string, content: string) {
+    return await fs.writeFile(
+      `${gitRootPath}/${FSAPI.filePath}`,
+      content,
+      'utf-8'
+    );
+  }
+}

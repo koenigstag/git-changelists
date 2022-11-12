@@ -2,7 +2,7 @@
 
 Extension for VSCode adding feature of Changelists GUI. Under the hood it's just few GIT tricks and commands.
 
-## Features
+### Features
 
 - Create, Rename, Delete changelists
 - Add, Remove unstaged files to changelist (via context menu)
@@ -10,24 +10,28 @@ Extension for VSCode adding feature of Changelists GUI. Under the hood it's just
 Each file that is tracked by git when added to chagelist will be processed through command `git update-index --assume-unchanged filepath`.
 Or through `git update-index --no-assume-unchanged filepath` when removed from changelist.
 
-## Known Issues
+### Known Issues
 
 - This extension may have some parsing issues, and code will be refactored sooner or later.
 
-## Release Notes
+### Release Notes
 
-## 0.1.3
+#### 0.1.4
+
+- Refactor code: split to files, refactor logic, add error messages
+
+#### 0.1.3
 
 - Add license txt file
 
-## 0.1.2
+#### 0.1.2
 
 - Add silent save
 
-## 0.1.1
+#### 0.1.1
 
 - Added extension logo and change log file
 
-### 0.1.0
+#### 0.1.0
 
 Added working prototype with GUI
