@@ -1,25 +1,132 @@
 {
   "name": "git-changelists",
-  "displayName": "git-changelists",
+  "displayName": "Git Changelists",
+  "publisher": "koenigstag",
   "description": "Adds tab for managing git changelists",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.73.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/koenigstag/git-changelists.git"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
-    "onCommand:git-changelists.helloWorld"
+    "onCommand:git-changelists.init",
+    "onCommand:git-changelists.views.explorer.addFileToChangelist",
+    "workspaceContains:**/.git/info/exclude",
+    "onView:git-changelists.views.explorer"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "git-changelists.helloWorld",
-        "title": "Hello World"
+        "command": "git-changelists.init",
+        "title": "Initialize Git Changelists"
+      },
+      {
+        "command": "git-changelists.views.explorer.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "git-changelists.views.explorer.createNew",
+        "title": "Add Changelist",
+        "icon": "$(add)"
+      },
+      {
+        "command": "git-changelists.views.explorer.rename",
+        "title": "Rename Changelist",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "git-changelists.views.explorer.addFileToChangelist",
+        "title": "Add to Changelist",
+        "icon": "$(output-view-icon)",
+        "group": "inline"
+      },
+      {
+        "command": "git-changelists.views.explorer.removeChangeList",
+        "title": "Delete Changelist"
+      },
+      {
+        "command": "git-changelists.views.explorer.removeFile",
+        "title": "Remove File from changelist"
       }
-    ]
+    ],
+    "commandPalette": [
+      {
+        "command": "git-changelists.views.explorer.addFileToChangelist",
+        "when": "false"
+      },
+      {
+        "command": "git-changelists.views.explorer.removeFile",
+        "when": "false"
+      },
+      {
+        "command": "git-changelists.views.explorer.removeChangeList",
+        "when": "false"
+      },
+      {
+        "command": "git-changelists.views.explorer.rename",
+        "when": "false"
+      },
+      {
+        "command": "git-changelists.views.explorer.createNew",
+        "when": "false"
+      },
+      {
+        "command": "git-changelists.views.explorer.refresh",
+        "when": "false"
+      }
+    ],
+    "views": {
+      "scm": [
+        {
+          "id": "git-changelists.views.explorer",
+          "name": "Changelists",
+          "contextualTitle": "Git Changelists"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "git-changelists.views.explorer.createNew",
+          "when": "view == git-changelists.views.explorer",
+          "group": "navigation"
+        },
+        {
+          "command": "git-changelists.views.explorer.refresh",
+          "when": "view == git-changelists.views.explorer",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "git-changelists.views.explorer.rename",
+          "when": "view == git-changelists.views.explorer && viewItem == changelist",
+          "group": "inline"
+        },
+        {
+          "command": "git-changelists.views.explorer.removeChangeList",
+          "when": "view == git-changelists.views.explorer && viewItem == changelist"
+        },
+        {
+          "command": "git-changelists.views.explorer.removeFile",
+          "when": "view == git-changelists.views.explorer && viewItem == filePath"
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "git-changelists.views.explorer.addFileToChangelist",
+          "when": "scmProvider == git && scmResourceGroup == workingTree"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "yarn run compile",
