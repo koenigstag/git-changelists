@@ -16,6 +16,10 @@ Or through `git update-index --no-assume-unchanged filepath` when removed from c
 
 ## Release Notes
 
+## 0.1.3
+
+- Add license txt file
+
 ## 0.1.2
 
 - Add silent save

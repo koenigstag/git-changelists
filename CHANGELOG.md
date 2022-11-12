@@ -2,6 +2,11 @@
 
 All notable changes to the "git-changelists" extension will be documented in this file.
 
+
+## 0.1.3
+
+- Add license txt file
+
 ## 0.1.2
 
 - Add silent save
