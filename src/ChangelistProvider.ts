@@ -16,32 +16,42 @@ export class ChangelistsTreeDataProvider
     private readonly parent: {
       tree: { [key: string]: any };
       nodes: { [key: string]: any };
-    }
-  ) {}
+    },
+    private readonly id: string,
+    private readonly workspacePath: string,
+  ) {
+
+
+    vscode.commands.registerCommand(`${id}.openFile`, (resource) => this.openResource(resource));
+  }
+
+  private openResource(resource: vscode.Uri): void {
+		vscode.window.showTextDocument(resource);
+	}
 
   refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
   }
 
-  getChildren(element: { key: string }): Key[] {
-    return this._getChildren(element?.key)
-      .map((key) => this._getNode(key))
+  getChildren(element: Key): Key[] {
+    return this._getChildren(element)
+      .map((key) => this._getNode(key, vscode.Uri.file(`${this.workspacePath}/${key}`)))
       .filter((item) => item !== undefined) as Key[];
   }
 
-  _getChildren(key: string | undefined): string[] {
-    if (!key) {
+  _getChildren(element?: Key): string[] {
+    if (!element?.key) {
       return Object.keys(this.parent.tree);
     }
-    const treeElement = this._getTreeElement(key);
+    const treeElement = this._getTreeElement(element.key);
     if (treeElement) {
       return Object.keys(treeElement);
     }
     return [];
   }
 
-  getTreeItem(element: { key: string }): vscode.TreeItem {
-    const treeItem = this._getTreeItem(element.key);
+  getTreeItem(element: Key): vscode.TreeItem {
+    const treeItem = this._getTreeItem(element.key, element.uri);
     treeItem.id =
       element.key === noFilesPlaceholder
         ? Math.floor(Math.random() * 1000).toString()
@@ -49,7 +59,7 @@ export class ChangelistsTreeDataProvider
     return treeItem;
   }
 
-  _getTreeItem(key: string): vscode.TreeItem {
+  _getTreeItem(key: string, uri?: vscode.Uri): vscode.TreeItem {
     const treeElement = this._getTreeElement(key);
     // An example of how to use codicons in a MarkdownString in a tree item tooltip.
     const isChangelistItem = Object.keys(this.parent.tree).includes(key);
@@ -68,6 +78,7 @@ export class ChangelistsTreeDataProvider
         : key === noFilesPlaceholder
         ? undefined
         : documentIcon,
+      command: isChangelistItem || key === noFilesPlaceholder ? undefined : { command: `${this.id}.openFile`, title: "Open File", arguments: [uri], },
       collapsibleState:
         treeElement && Object.keys(treeElement).length
           ? vscode.TreeItemCollapsibleState.Collapsed
@@ -75,24 +86,24 @@ export class ChangelistsTreeDataProvider
     };
   }
 
-  _getTreeElement(element: string): any {
+  _getTreeElement(key: string): any {
     const parent = this.parent.tree;
 
-    if (!parent[element]) {
+    if (!parent[key]) {
       return null;
     }
 
-    return parent[element];
+    return parent[key];
   }
 
-  getParent({ key }: { key: string }): { key: string } | undefined {
+  getParent({ key, uri }: Key): Key | undefined {
     const parentKey = key.substring(0, key.length - 1);
-    return parentKey ? new Key(parentKey) : undefined;
+    return parentKey ? new Key(parentKey, uri) : undefined;
   }
 
-  _getNode(key: string): Key | undefined {
+  _getNode(key: string, uri?: vscode.Uri): Key | undefined {
     if (!this.parent.nodes[key]) {
-      this.parent.nodes[key] = new Key(key);
+      this.parent.nodes[key] = new Key(key, uri);
     }
 
     return this.parent.nodes[key];
@@ -100,5 +111,5 @@ export class ChangelistsTreeDataProvider
 }
 
 export class Key {
-  constructor(readonly key: string) {}
+  constructor(readonly key: string, readonly uri?: vscode.Uri) {}
 }

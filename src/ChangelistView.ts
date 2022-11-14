@@ -4,6 +4,7 @@ import { contentToLines, transformPath } from './utils';
 import { ChangelistsTreeDataProvider, Key } from './ChangelistProvider';
 import { noFilesPlaceholder } from './constants';
 import { cannotReadContent, cannotWriteContent } from './constants/messages';
+import { store } from './store';
 
 export class ChangeListView {
   static view: vscode.TreeView<{
@@ -22,8 +23,11 @@ export class ChangeListView {
     if (fromFile) {
       try {
         await this.loadTreeFile();
+
+        store.gitRepoFound = true;
       } catch (error) {
         vscode.window.showErrorMessage(cannotReadContent);
+        store.gitRepoFound = false;
 
         return;
       }
@@ -40,7 +44,11 @@ export class ChangeListView {
 
     this.parser = new GitExcludeParse(gitRootPath);
     this.stringify = new GitExcludeStringify(gitRootPath);
-    ChangeListView.provider = new ChangelistsTreeDataProvider(ChangeListView);
+    ChangeListView.provider = new ChangelistsTreeDataProvider(
+      ChangeListView,
+      id,
+      gitRootPath.replace('.git', '')
+    );
 
     ChangeListView.view = vscode.window.createTreeView(id, {
       treeDataProvider: ChangeListView.provider,
@@ -154,6 +162,41 @@ export class ChangeListView {
     }
 
     delete changelist[file];
+  }
+
+  public async isExcludeInitialized() {
+    let lines;
+
+    try {
+      lines = await this.parser.getExcludeContentLines();
+      store.gitRepoFound = true;
+    } catch (error) {
+      vscode.window.showErrorMessage(cannotReadContent);
+      store.gitRepoFound = false;
+
+      throw error;
+    }
+
+    return this.parser.checkIfWorkzoneExists(lines);
+  }
+
+  public async askToInitExcludeFile() {
+    const choice = await vscode.window.showQuickPick(['Yes', 'No, later'], {
+      title:
+        'Would you like to initialize Git Changelists ? \nYou can do it later using command "Initialize Git Changelists"',
+    });
+
+    if (choice === 'Yes') {
+      try {
+        await this.initExcludeFile();
+
+        return true;
+      } catch (error) {
+        vscode.window.showErrorMessage(cannotWriteContent);
+      }
+    }
+
+    return false;
   }
 
   /* IO methods */

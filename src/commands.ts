@@ -3,7 +3,39 @@ import * as vscode from 'vscode';
 import { Key } from './ChangelistProvider';
 import { ChangeListView } from './ChangelistView';
 import { noFilesPlaceholder } from './constants';
-import { cannotReadContent, cannotWriteContent } from './constants/messages';
+import {
+  cannotWriteContent,
+  gitRepoNotFound,
+  workspaceNotFound,
+  workspaceNotTrusted,
+} from './constants/messages';
+import { store } from './store';
+
+async function checkPrerequisites(
+  viewInstance: ChangeListView,
+  checkExcludeInitialized = true
+) {
+  if (!store.workspaceFound) {
+    vscode.window.showErrorMessage(workspaceNotFound);
+    return false;
+  } else if (!store.workspaceIsTrusted) {
+    vscode.window.showErrorMessage(workspaceNotTrusted);
+    return false;
+  } else if (checkExcludeInitialized) {
+    try {
+      if (!(await viewInstance.isExcludeInitialized())) {
+        return await viewInstance.askToInitExcludeFile();
+      }
+    } catch (error) {
+      return false;
+    }
+  } else if (!store.gitRepoFound) {
+    vscode.window.showErrorMessage(gitRepoNotFound);
+    return false;
+  }
+
+  return true;
+}
 
 function registerCommands(options: {
   viewInstance: ChangeListView;
@@ -12,62 +44,34 @@ function registerCommands(options: {
 }) {
   const { viewInstance, context, logger } = options;
 
-  const disposable = vscode.commands.registerCommand(
-    'git-changelists.init',
-    async () => {
-      logger.appendLine(`command: git-changelists.init`);
+  vscode.commands.registerCommand('git-changelists.init', async () => {
+    logger.appendLine(`command: git-changelists.init`);
 
-      let lines;
+    if (!(await checkPrerequisites(viewInstance, false))) {
+      return;
+    }
+
+    if (!(await viewInstance.isExcludeInitialized())) {
+      vscode.window.showInformationMessage('Initializing git-changelists!');
 
       try {
-        lines = await viewInstance.parser.getExcludeContentLines();
+        await viewInstance.initExcludeFile();
       } catch (error) {
-        vscode.window.showErrorMessage(cannotReadContent);
-
-        return;
-      }
-
-      if (!viewInstance.parser.checkIfWorkzoneExists(lines)) {
-        vscode.window.showInformationMessage('Initializing git-changelists!');
-
-        try {
-          await viewInstance.initExcludeFile();
-        } catch (error) {
-          vscode.window.showErrorMessage(cannotWriteContent);
-        }
+        vscode.window.showErrorMessage(cannotWriteContent);
       }
     }
-  );
-  context.subscriptions.push(disposable);
+  });
 
   vscode.commands.registerCommand(
     `${viewInstance.config.id}.refresh`,
     async () => {
       logger.appendLine(`command: ${viewInstance.config.id}.refresh`);
 
-      let lines: string[] = [];
-      try {
-        lines = await viewInstance.parser.getExcludeContentLines();
-      } catch (error) {
-        vscode.window.showErrorMessage(cannotReadContent);
+      if (!(await checkPrerequisites(viewInstance))) {
+        return;
       }
 
-      if (!viewInstance.parser.checkIfWorkzoneExists(lines)) {
-        const choice = await vscode.window.showQuickPick(['Yes', 'No, later'], {
-          title:
-            'Would you like to initialize Git Changelists ? \nYou can do it later using command "Initialize Git Changelists"',
-        });
-  
-        if (choice === 'Yes') {
-          try {
-            await viewInstance.initExcludeFile();
-          } catch (error) {
-            vscode.window.showErrorMessage(cannotWriteContent);
-          }
-        }
-      } else {
-        await viewInstance.refresh(true);
-      }
+      await viewInstance.refresh(true);
     }
   );
 
@@ -75,6 +79,10 @@ function registerCommands(options: {
     `${viewInstance.config.id}.createNew`,
     async () => {
       logger.appendLine(`command: ${viewInstance.config.id}.createNew`);
+
+      if (!(await checkPrerequisites(viewInstance))) {
+        return;
+      }
 
       const value = await vscode.window.showInputBox({
         placeHolder: 'New Changelist name',
@@ -108,6 +116,10 @@ function registerCommands(options: {
     async (node: Key) => {
       logger.appendLine(`command: ${viewInstance.config.id}.rename`);
 
+      if (!(await checkPrerequisites(viewInstance))) {
+        return;
+      }
+
       const value = await vscode.window.showInputBox({
         placeHolder: 'New Changelist name',
         prompt: 'Rename Changelist',
@@ -140,6 +152,10 @@ function registerCommands(options: {
     async (node: Key) => {
       logger.appendLine(`command: ${viewInstance.config.id}.removeChangeList`);
 
+      if (!(await checkPrerequisites(viewInstance))) {
+        return;
+      }
+
       const value = ChangeListView.tree[node.key];
 
       viewInstance.removeChangelist(node.key);
@@ -168,6 +184,10 @@ function registerCommands(options: {
     `${viewInstance.config.id}.removeFile`,
     async (node: Key) => {
       logger.appendLine(`command: ${viewInstance.config.id}.removeFile`);
+
+      if (!(await checkPrerequisites(viewInstance))) {
+        return;
+      }
 
       const wsPath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 
@@ -220,6 +240,10 @@ function registerCommands(options: {
       logger.appendLine(
         `command: ${viewInstance.config.id}.addFileToChangelist`
       );
+
+      if (!(await checkPrerequisites(viewInstance))) {
+        return;
+      }
 
       const wsPath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 

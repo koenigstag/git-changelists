@@ -16,6 +16,10 @@ Or through `git update-index --no-assume-unchanged filepath` when removed from c
 
 ### Release Notes
 
+#### 0.1.5
+
+- Refactor error handling
+
 #### 0.1.4
 
 - Refactor code: split to files, refactor logic, add error messages
