@@ -16,6 +16,12 @@ Or through `git update-index --no-assume-unchanged filepath` when removed from c
 
 ### Release Notes
 
+#### 0.1.6
+
+- Fix check if git repo exist
+- Add files counter to changelist
+- Add file open on click
+
 #### 0.1.5
 
 - Refactor error handling

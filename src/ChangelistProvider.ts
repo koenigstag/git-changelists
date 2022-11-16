@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
-import { noFilesPlaceholder } from './constants';
+import { emptySymbol, noFilesPlaceholder } from './constants';
 import { documentIcon, folderIcon } from './constants/icons';
+import { logger } from './logger';
 
 export class ChangelistsTreeDataProvider
   implements vscode.TreeDataProvider<Key>
@@ -18,16 +19,18 @@ export class ChangelistsTreeDataProvider
       nodes: { [key: string]: any };
     },
     private readonly id: string,
-    private readonly workspacePath: string,
+    private readonly workspacePath: string
   ) {
+    vscode.commands.registerCommand(`${id}.openFile`, (resource: vscode.Uri) => {
+      logger.appendLine(`openResource-openFile: ${resource.fsPath}`);
 
-
-    vscode.commands.registerCommand(`${id}.openFile`, (resource) => this.openResource(resource));
+      this.openResource(resource);
+    });
   }
 
   private openResource(resource: vscode.Uri): void {
-		vscode.window.showTextDocument(resource);
-	}
+    vscode.window.showTextDocument(resource);
+  }
 
   refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
@@ -35,7 +38,9 @@ export class ChangelistsTreeDataProvider
 
   getChildren(element: Key): Key[] {
     return this._getChildren(element)
-      .map((key) => this._getNode(key, vscode.Uri.file(`${this.workspacePath}/${key}`)))
+      .map((key) =>
+        this._getNode(key, vscode.Uri.file(`${this.workspacePath}/${key}`))
+      )
       .filter((item) => item !== undefined) as Key[];
   }
 
@@ -60,33 +65,23 @@ export class ChangelistsTreeDataProvider
   }
 
   _getTreeItem(key: string, uri?: vscode.Uri): vscode.TreeItem {
-    const treeElement = this._getTreeElement(key);
-    // An example of how to use codicons in a MarkdownString in a tree item tooltip.
     const isChangelistItem = Object.keys(this.parent.tree).includes(key);
 
-    const tooltip = isChangelistItem
-      ? new vscode.MarkdownString(`$(zap) Changelist: ${key}`, true)
-      : `Filename: ${key}`;
-    return {
-      label: <vscode.TreeItemLabel>{
-        label: key,
-      },
-      tooltip,
-      contextValue: isChangelistItem ? 'changelist' : 'filePath',
-      iconPath: isChangelistItem
-        ? folderIcon
-        : key === noFilesPlaceholder
-        ? undefined
-        : documentIcon,
-      command: isChangelistItem || key === noFilesPlaceholder ? undefined : { command: `${this.id}.openFile`, title: "Open File", arguments: [uri], },
-      collapsibleState:
-        treeElement && Object.keys(treeElement).length
-          ? vscode.TreeItemCollapsibleState.Collapsed
-          : vscode.TreeItemCollapsibleState.None,
-    };
+    const treeElement = this._getTreeElement(key);
+    const elemCopy: any = Object.assign({}, treeElement);
+
+    delete elemCopy[noFilesPlaceholder];
+
+    const fileCount = Object.keys(elemCopy ?? {}).length;
+
+    const item = isChangelistItem
+      ? new ChangelistItem(key, fileCount)
+      : new ChangelistFile(key, uri, this.id);
+
+    return item;
   }
 
-  _getTreeElement(key: string): any {
+  _getTreeElement(key: string): Key | null {
     const parent = this.parent.tree;
 
     if (!parent[key]) {
@@ -112,4 +107,38 @@ export class ChangelistsTreeDataProvider
 
 export class Key {
   constructor(readonly key: string, readonly uri?: vscode.Uri) {}
+}
+
+export class ChangelistItem {
+  contextValue = 'changelist';
+  iconPath = folderIcon;
+  tooltip = new vscode.MarkdownString(`$(zap) Changelist: ${this.key}`, true);
+  collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+  label: string;
+
+  constructor(readonly key: string, fileCount: number) {
+    this.label = `${key}${emptySymbol}(${fileCount} file${
+      fileCount > 1 || fileCount === 0 ? 's' : ''
+    })`;
+  }
+}
+
+export class ChangelistFile {
+  contextValue = 'filePath';
+  label = this.key;
+  iconPath?: { light: string; dark: string };
+  tooltip = `Filename: ${this.key}`;
+  command?: vscode.Command;
+
+  constructor(readonly key: string, readonly uri?: vscode.Uri, id?: string) {
+    this.iconPath = key === noFilesPlaceholder ? undefined : documentIcon;
+    this.command =
+      key === noFilesPlaceholder
+        ? undefined
+        : {
+            command: `${id}.openFile`,
+            title: 'Open File',
+            arguments: [uri],
+          };
+  }
 }

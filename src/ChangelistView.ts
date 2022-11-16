@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { GitExcludeParse, GitExcludeStringify } from './GitExclude';
 import { contentToLines, transformPath } from './utils';
 import { ChangelistsTreeDataProvider, Key } from './ChangelistProvider';
-import { noFilesPlaceholder } from './constants';
+import { emptySymbol, noFilesPlaceholder } from './constants';
 import { cannotReadContent, cannotWriteContent } from './constants/messages';
 import { store } from './store';
 
@@ -37,8 +37,7 @@ export class ChangeListView {
 
   constructor(
     context: vscode.ExtensionContext,
-    public readonly config: { id: string; gitRootPath: string },
-    private readonly logger: vscode.OutputChannel
+    public readonly config: { id: string; gitRootPath: string }
   ) {
     const { id, gitRootPath } = this.config;
 
@@ -58,8 +57,6 @@ export class ChangeListView {
     context.subscriptions.push(ChangeListView.view);
 
     vscode.workspace.onDidChangeTextDocument((e) => {
-      this.logger.appendLine(`event: onDidChangeTextDocument`);
-
       const { document } = e;
 
       if (
@@ -101,11 +98,21 @@ export class ChangeListView {
     }
   }
 
+  public transformChangelistName(name: string) {
+    if (name.includes(emptySymbol)) {
+      return name.split(RegExp(emptySymbol)).at(0) ?? name;
+    }
+
+    return name;
+  }
+
   public addNewChangelist(
     name: string,
     files: string[] = [noFilesPlaceholder]
   ) {
-    ChangeListView.tree[name] = {
+    const transName = this.transformChangelistName(name);
+
+    ChangeListView.tree[transName] = {
       ...files?.reduce((acc: any, item) => {
         acc[item] = {};
 
@@ -115,20 +122,26 @@ export class ChangeListView {
   }
 
   public removeChangelist(name: string) {
-    delete ChangeListView.tree[name];
-    delete ChangeListView.nodes[name];
+    const transName = this.transformChangelistName(name);
+
+    delete ChangeListView.tree[transName];
+    delete ChangeListView.nodes[transName];
   }
 
   public renameChangelist(name: string, newName: string) {
-    const content = ChangeListView.tree[name];
+    const transName = this.transformChangelistName(name);
+
+    const content = ChangeListView.tree[transName];
 
     ChangeListView.tree[newName] = content;
-    delete ChangeListView.tree[name];
-    delete ChangeListView.nodes[name];
+    delete ChangeListView.tree[transName];
+    delete ChangeListView.nodes[transName];
   }
 
   public addFileToChangelist(name: string, file: string) {
-    const changelist = ChangeListView.tree[name];
+    const transName = this.transformChangelistName(name);
+
+    const changelist = ChangeListView.tree[transName];
 
     const filePath = transformPath(file);
 
@@ -151,7 +164,9 @@ export class ChangeListView {
   }
 
   public removeFileFromChangelist(name: string, file: string) {
-    const changelist = ChangeListView.tree[name];
+    const transName = this.transformChangelistName(name);
+
+    const changelist = ChangeListView.tree[transName];
 
     if (!changelist) {
       return;

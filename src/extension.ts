@@ -3,55 +3,66 @@
 import * as vscode from 'vscode';
 import { ChangeListView } from './ChangelistView';
 import registerCommands from './commands';
+import { store } from './store';
+import { execSync } from 'child_process';
+import { logger } from './logger';
+import { getWorkspaceRootPath } from './constants';
 
 export const EXTENSION_ID = 'git-changelists';
 
-const checkPrerequisites = (logger: vscode.OutputChannel) => {
+const isGitInitialized = () => {
+  try {
+    execSync('git rev-parse --is-inside-work-tree', {
+      encoding: 'utf-8',
+      cwd: getWorkspaceRootPath(),
+    });
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+const checkPrerequisites = () => {
   if (
     !vscode.workspace.workspaceFolders ||
     vscode.workspace.workspaceFolders.length === 0
   ) {
     logger.appendLine('This extension will not work outside workspace');
+    store.workspaceFound = false;
 
-    return 'exit';
+    return;
   }
+  store.workspaceFound = true;
 
   if (!vscode.workspace.isTrusted) {
     logger.appendLine(
       'This extension will not work inside untrusted workspace'
     );
+    store.workspaceIsTrusted = false;
 
-    return 'exit';
+    return;
   }
-
-  return;
+  store.workspaceIsTrusted = true;
 };
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
-  const logger = vscode.window.createOutputChannel('Git Changelists');
-
   logger.appendLine(`Extension "${EXTENSION_ID}" is now active!`);
 
   logger.appendLine(process.env.NODE_ENV ?? '');
 
   /*  */
 
-  const result = checkPrerequisites(logger);
-
-  if (!vscode.workspace.workspaceFolders || result === 'exit') {
-    return;
-  }
+  checkPrerequisites();
 
   /*  */
 
-  const rootUri = vscode.workspace.workspaceFolders[0].uri;
-
-  const workspaceRootPath = rootUri.fsPath;
+  const workspaceRootPath = getWorkspaceRootPath();
 
   logger.appendLine('Workspace rootpath: ' + workspaceRootPath);
 
+  /*  */
   const gitRootPath = `${workspaceRootPath}/.git`; // TODO fix
 
   const config = vscode.workspace.getConfiguration();
@@ -59,22 +70,28 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const gitEnabled = gitConf.enabled;
 
-  logger.appendLine('Is Git repo active: ' + gitEnabled); // TODO add valid check
+  const isGitRepoFound = isGitInitialized();
+
+  logger.appendLine('Is Git repo active: ' + isGitRepoFound);
+
+  if (!gitEnabled || !isGitRepoFound) {
+    store.gitRepoFound = false;
+  } else {
+    store.gitRepoFound = true;
+  }
 
   /*  */
 
-  const viewInstance = new ChangeListView(
-    context,
-    {
-      id: `${EXTENSION_ID}.views.explorer`,
-      gitRootPath,
-    },
-    logger
-  );
+  const viewInstance = new ChangeListView(context, {
+    id: `${EXTENSION_ID}.views.explorer`,
+    gitRootPath,
+  });
 
-  registerCommands({ viewInstance, context, logger });
+  registerCommands({ viewInstance, context });
 
-  viewInstance.refresh();
+  if (store.gitRepoFound) {
+    viewInstance.refresh(true);
+  }
 }
 
 // This method is called when your extension is deactivated

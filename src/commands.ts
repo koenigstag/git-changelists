@@ -2,13 +2,14 @@ import * as child from 'child_process';
 import * as vscode from 'vscode';
 import { Key } from './ChangelistProvider';
 import { ChangeListView } from './ChangelistView';
-import { noFilesPlaceholder } from './constants';
+import { getWorkspaceRootPath, noFilesPlaceholder } from './constants';
 import {
   cannotWriteContent,
   gitRepoNotFound,
   workspaceNotFound,
   workspaceNotTrusted,
 } from './constants/messages';
+import { logger } from './logger';
 import { store } from './store';
 
 async function checkPrerequisites(
@@ -40,9 +41,10 @@ async function checkPrerequisites(
 function registerCommands(options: {
   viewInstance: ChangeListView;
   context: vscode.ExtensionContext;
-  logger: vscode.OutputChannel;
 }) {
-  const { viewInstance, context, logger } = options;
+  const { viewInstance, context } = options;
+
+  const wsPath = getWorkspaceRootPath();
 
   vscode.commands.registerCommand('git-changelists.init', async () => {
     logger.appendLine(`command: git-changelists.init`);
@@ -156,13 +158,13 @@ function registerCommands(options: {
         return;
       }
 
-      const value = ChangeListView.tree[node.key];
+      const key = viewInstance.transformChangelistName(node.key);
 
-      viewInstance.removeChangelist(node.key);
+      const value = ChangeListView.tree[key];
+
+      viewInstance.removeChangelist(key);
 
       await viewInstance.onTreeChange();
-
-      const wsPath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 
       Object.keys(value).forEach((fileName) => {
         try {
@@ -188,8 +190,6 @@ function registerCommands(options: {
       if (!(await checkPrerequisites(viewInstance))) {
         return;
       }
-
-      const wsPath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 
       const fileName = node.key;
 
@@ -244,8 +244,6 @@ function registerCommands(options: {
       if (!(await checkPrerequisites(viewInstance))) {
         return;
       }
-
-      const wsPath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 
       const relativePath = node.resourceUri.fsPath.replace(wsPath, '');
 
