@@ -2,6 +2,10 @@
 
 All notable changes to the "git-changelists" extension will be documented in this file.
 
+### 0.1.7
+
+- Add preview image to README.md
+
 ### 0.1.6
 
 - Fix check if git repo exist
