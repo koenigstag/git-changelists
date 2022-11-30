@@ -4,7 +4,7 @@
   "publisher": "koenigstag",
   "icon": "resources/logo_x240.png",
   "description": "Adds menu for managing Git Changelists",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "engines": {
     "vscode": "^1.73.0"
   },

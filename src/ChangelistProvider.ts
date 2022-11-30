@@ -113,8 +113,8 @@ export class ChangelistItem {
   contextValue = 'changelist';
   iconPath = folderIcon;
   tooltip = new vscode.MarkdownString(`$(zap) Changelist: ${this.key}`, true);
-  collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
   label: string;
+  collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
   constructor(readonly key: string, fileCount: number) {
     this.label = `${key}${emptySymbol}(${fileCount} file${

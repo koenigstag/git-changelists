@@ -74,10 +74,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
   logger.appendLine('Is Git repo active: ' + isGitRepoFound);
 
-  if (!gitEnabled || !isGitRepoFound) {
-    store.gitRepoFound = false;
-  } else {
+  if (gitEnabled && isGitRepoFound) {
     store.gitRepoFound = true;
+  } else {
+    store.gitRepoFound = false;
   }
 
   /*  */

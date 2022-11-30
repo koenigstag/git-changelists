@@ -220,6 +220,7 @@ export class ChangeListView {
     const oldContent = await this.parser.getExcludeContent();
 
     const newContent = this.stringify.prepareExcludeContent(oldContent, {
+      // eslint-disable-next-line @typescript-eslint/naming-convention
       Changes: { [noFilesPlaceholder]: {} },
     });
 
@@ -260,8 +261,6 @@ export class ChangeListView {
     );
 
     await this.writeTextToExcludeFile(oldContent, newContent);
-
-    // await writeNewExcludeContent(this.config.gitRootPath, treeLines);
   }
 }
 

@@ -2,6 +2,10 @@
 
 All notable changes to the "git-changelists" extension will be documented in this file.
 
+### 0.1.8
+
+- Small fixes
+
 ### 0.1.7
 
 - Add preview image to README.md
