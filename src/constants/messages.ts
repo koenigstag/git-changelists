@@ -7,3 +7,29 @@ export const gitRepoNotFound =
 export const cannotReadContent = gitRepoNotFound;
 
 export const cannotWriteContent = 'Cannot write changelists to file';
+
+export const askToInitExtFiles = 'Would you like to initialize Git Changelists ? \nYou can do it later using command "Initialize Git Changelists"';
+export enum askToInitAnswers {
+  yes = 'Yes',
+  no = 'No, later',
+};
+
+export const initializingExtFiles = 'Initializing git-changelists!';
+
+export const changelistNameMandatory = 'A Changelist name is mandatory to execute this action';
+
+export const changelistNameAlreadyExists = 'Changelist with such name already exists';
+
+export const changelistNotFound = 'Changelist not found';
+
+export const fileWasRestored = '{file} is restored from the state assumed to be unchanged.';
+
+export const fileAssumedUnchanged = '{file} is assumed to be unchanged.';
+
+export const selectChagelistToAddFile = 'Select Changelist where you want to add file';
+
+export const newChangelistPlaceholder = 'New Changelist name';
+
+export const renameChangelist = 'Rename Changelist';
+
+export const enterUniqueChangelistName = 'Enter new Changelist unique name';

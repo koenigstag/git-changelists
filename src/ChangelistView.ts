@@ -1,13 +1,28 @@
-import * as vscode from 'vscode';
+import {
+  window,
+  TreeView,
+  ExtensionContext,
+  Range,
+  Position,
+  workspace,
+  WorkspaceEdit,
+  Uri,
+} from 'vscode';
+import { sep, posix } from 'path';
 import { GitExcludeParse, GitExcludeStringify } from './GitExclude';
-import { contentToLines, transformPath } from './utils';
+import { contentToLines, getRelativeExcludePath, transformPath } from './utils';
 import { ChangelistsTreeDataProvider, Key } from './ChangelistProvider';
 import { emptySymbol, noFilesPlaceholder } from './constants';
-import { cannotReadContent, cannotWriteContent } from './constants/messages';
+import {
+  askToInitAnswers,
+  askToInitExtFiles,
+  cannotReadContent,
+  cannotWriteContent,
+} from './constants/messages';
 import { store } from './store';
 
 export class ChangeListView {
-  static view: vscode.TreeView<{
+  static view: TreeView<{
     key: string;
   }>;
 
@@ -26,7 +41,7 @@ export class ChangeListView {
 
         store.gitRepoFound = true;
       } catch (error) {
-        vscode.window.showErrorMessage(cannotReadContent);
+        window.showErrorMessage(cannotReadContent);
         store.gitRepoFound = false;
 
         return;
@@ -36,7 +51,7 @@ export class ChangeListView {
   }
 
   constructor(
-    context: vscode.ExtensionContext,
+    context: ExtensionContext,
     public readonly config: { id: string; gitRootPath: string }
   ) {
     const { id, gitRootPath } = this.config;
@@ -49,23 +64,30 @@ export class ChangeListView {
       gitRootPath.replace('.git', '')
     );
 
-    ChangeListView.view = vscode.window.createTreeView(id, {
+    ChangeListView.view = window.createTreeView(id, {
       treeDataProvider: ChangeListView.provider,
       showCollapseAll: true,
       canSelectMany: true,
     });
     context.subscriptions.push(ChangeListView.view);
 
-    vscode.workspace.onDidChangeTextDocument((e) => {
+    workspace.onDidChangeTextDocument((e) => {
       const { document } = e;
+
+      const definitelyPosix = document.uri.fsPath.split(sep).join(posix.sep);
 
       if (
         !document.isUntitled &&
-        (document.uri.fsPath.includes('.git/info/exclude') ||
-          document.uri.fsPath.includes('.git\\info\\exclude'))
+        definitelyPosix.includes(getRelativeExcludePath('.git'))
       ) {
         setTimeout(async () => {
-          document.save();
+          try {
+            if (!document.isClosed) {
+              document.save();
+            }
+          } catch (error) {
+            // window.showErrorMessage(cannotWriteContent);
+          }
 
           await this.refresh(true);
         }, 300);
@@ -73,8 +95,14 @@ export class ChangeListView {
     });
   }
 
-  public isUntracked(node: any) {
-    return node.letter === 'U';
+  public async isUntracked(filePath: string, lines?: string[]) {
+    const gitStatusLines = lines ?? await this.parser.getGitStatus();
+    
+    return gitStatusLines.some((line) => {
+      const status = line.trimStart().split(' ').at(0);
+
+      return status === '??' && line.includes(filePath);
+    });
   }
 
   public async loadTreeFile() {
@@ -94,7 +122,7 @@ export class ChangeListView {
     try {
       await this.writeTreeToExclude();
     } catch (error) {
-      vscode.window.showErrorMessage(cannotWriteContent);
+      window.showErrorMessage(cannotWriteContent);
     }
   }
 
@@ -108,7 +136,7 @@ export class ChangeListView {
 
   public addNewChangelist(
     name: string,
-    files: string[] = [noFilesPlaceholder]
+    files: string[] = [/* noFilesPlaceholder */]
   ) {
     const transName = this.transformChangelistName(name);
 
@@ -186,7 +214,7 @@ export class ChangeListView {
       lines = await this.parser.getExcludeContentLines();
       store.gitRepoFound = true;
     } catch (error) {
-      vscode.window.showErrorMessage(cannotReadContent);
+      window.showErrorMessage(cannotReadContent);
       store.gitRepoFound = false;
 
       throw error;
@@ -196,18 +224,21 @@ export class ChangeListView {
   }
 
   public async askToInitExcludeFile() {
-    const choice = await vscode.window.showQuickPick(['Yes', 'No, later'], {
-      title:
-        'Would you like to initialize Git Changelists ? \nYou can do it later using command "Initialize Git Changelists"',
+    const answers = Object.keys(askToInitAnswers).filter((item) =>
+      isNaN(Number(item))
+    );
+
+    const choice = await window.showQuickPick(answers, {
+      title: askToInitExtFiles,
     });
 
-    if (choice === 'Yes') {
+    if (choice === askToInitAnswers.yes) {
       try {
         await this.initExcludeFile();
 
         return true;
       } catch (error) {
-        vscode.window.showErrorMessage(cannotWriteContent);
+        window.showErrorMessage(cannotWriteContent);
       }
     }
 
@@ -221,7 +252,7 @@ export class ChangeListView {
 
     const newContent = this.stringify.prepareExcludeContent(oldContent, {
       // eslint-disable-next-line @typescript-eslint/naming-convention
-      Changes: { [noFilesPlaceholder]: {} },
+      Changes: { /* [noFilesPlaceholder]: {} */ },
     });
 
     await this.writeTextToExcludeFile(oldContent, newContent);
@@ -234,20 +265,17 @@ export class ChangeListView {
 
     const oldLines = contentToLines(oldContent);
 
-    const wsEdit = new vscode.WorkspaceEdit();
+    const wsEdit = new WorkspaceEdit();
 
-    const fileUri = vscode.Uri.file(`${this.config.gitRootPath}/info/exclude`);
+    const fileUri = Uri.file(getRelativeExcludePath(this.config.gitRootPath));
 
     wsEdit.replace(
       fileUri,
-      new vscode.Range(
-        new vscode.Position(0, 0),
-        new vscode.Position(oldLines.length - 1, 0)
-      ),
+      new Range(new Position(0, 0), new Position(oldLines.length - 1, 0)),
       newContent
     );
 
-    await vscode.workspace.applyEdit(wsEdit);
+    await workspace.applyEdit(wsEdit);
   }
 
   public async writeTreeToExclude() {

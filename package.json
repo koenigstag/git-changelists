@@ -4,7 +4,7 @@
   "publisher": "koenigstag",
   "icon": "resources/logo_x240.png",
   "description": "Adds menu for managing Git Changelists",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "engines": {
     "vscode": "^1.73.0"
   },
@@ -56,8 +56,16 @@
         "title": "Delete Changelist"
       },
       {
+        "command": "git-changelists.views.explorer.stageChangeList",
+        "title": "Stage files"
+      },
+      {
         "command": "git-changelists.views.explorer.removeFile",
         "title": "Remove File from changelist"
+      },
+      {
+        "command": "git-changelists.views.explorer.stageFile",
+        "title": "Stage File"
       }
     ],
     "commandPalette": [
@@ -71,6 +79,14 @@
       },
       {
         "command": "git-changelists.views.explorer.removeChangeList",
+        "when": "false"
+      },
+      {
+        "command": "git-changelists.views.explorer.stageChangeList",
+        "when": "false"
+      },
+      {
+        "command": "git-changelists.views.explorer.stageFile",
         "when": "false"
       },
       {
@@ -120,6 +136,14 @@
         },
         {
           "command": "git-changelists.views.explorer.removeFile",
+          "when": "view == git-changelists.views.explorer && viewItem == filePath"
+        },
+        {
+          "command": "git-changelists.views.explorer.stageChangeList",
+          "when": "view == git-changelists.views.explorer && viewItem == changelist"
+        },
+        {
+          "command": "git-changelists.views.explorer.stageFile",
           "when": "view == git-changelists.views.explorer && viewItem == filePath"
         }
       ],

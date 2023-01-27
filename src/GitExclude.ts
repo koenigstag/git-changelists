@@ -1,4 +1,5 @@
-import * as fs from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
+import { resolve } from 'path';
 import {
   changelistNameRegex,
   changelistStartRegex,
@@ -6,7 +7,7 @@ import {
   workzoneEndRegex,
   workzoneStartRegex,
 } from './constants/regexp';
-import { contentToLines, linesToText } from './utils';
+import { childExecAsync, contentToLines, linesToText } from './utils';
 
 export type Changelist = { lineIndex: number; name: string; files: string[] };
 export type WorkzoneIndexes = { startIndex: number; endIndex: number };
@@ -15,6 +16,19 @@ export class GitExcludeParse {
   content: string = '';
 
   constructor(private readonly gitRootPath: string) {}
+
+  async getGitStatus(): Promise<string[]> {
+    try {
+      const status = await childExecAsync(
+        'git status -s',
+        resolve(this.gitRootPath, '../')
+      );
+
+      return contentToLines(status);
+    } catch (error) {
+      return [];
+    }
+  }
 
   async getExcludeContent(): Promise<string> {
     this.content = await FSAPI.getExcludeContent(this.gitRootPath);
@@ -106,12 +120,14 @@ export class GitExcludeParse {
   }
 
   getOtherContent(originalContent: string) {
-
     const lines = contentToLines(originalContent);
-  
+
     const { startIndex, endIndex } = GitExcludeParse.getWorkzoneIndexes(lines);
-  
-    return linesToText([linesToText(lines.slice(0, startIndex)).trim(), linesToText(lines.slice(endIndex + 1, lines.length)).trim()]);
+
+    return linesToText([
+      linesToText(lines.slice(0, startIndex)).trim(),
+      linesToText(lines.slice(endIndex + 1, lines.length)).trim(),
+    ]);
   }
 }
 
@@ -137,12 +153,13 @@ ${endWZLine}
     return Object.entries(tree)
       .map(([name, items]) => {
         return [
-          '\n' + removeSpecialSymbs(
-            changelistStartRegex.source.replace(
-              changelistNameRegex.source,
-              name
-            )
-          ),
+          '\n' +
+            removeSpecialSymbs(
+              changelistStartRegex.source.replace(
+                changelistNameRegex.source,
+                name
+              )
+            ),
           ...Object.keys(items),
         ];
       })
@@ -183,12 +200,12 @@ export class FSAPI {
   static filePath = '/info/exclude';
 
   static async getExcludeContent(gitRootPath: string) {
-    return await fs.readFile(`${gitRootPath}/${FSAPI.filePath}`, 'utf-8');
+    return await readFile(`${gitRootPath}/${FSAPI.filePath}`, 'utf-8');
   }
 
   // unused
   static async writeExclude(gitRootPath: string, content: string) {
-    return await fs.writeFile(
+    return await writeFile(
       `${gitRootPath}/${FSAPI.filePath}`,
       content,
       'utf-8'

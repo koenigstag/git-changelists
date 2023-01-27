@@ -2,6 +2,10 @@
 
 All notable changes to the "git-changelists" extension will be documented in this file.
 
+### 0.1.9
+
+- Add stage files command
+
 ### 0.1.8
 
 - Small fixes
