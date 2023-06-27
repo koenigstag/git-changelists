@@ -90,7 +90,8 @@ export async function activate(context: vscode.ExtensionContext) {
   registerCommands({ viewInstance, context });
 
   if (store.gitRepoFound) {
-    viewInstance.refresh(true);
+    await viewInstance.initExcludeFile();
+    await viewInstance.refresh(true);
   }
 }
 
