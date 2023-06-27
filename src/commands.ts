@@ -166,14 +166,13 @@ function registerCommands(options: {
   const wsPath = getWorkspaceRootPath();
 
   registerCommand(extComands.init, viewInstance, async () => {
-    if (!(await viewInstance.isExcludeInitialized())) {
-      window.showInformationMessage(initializingExtFiles);
+    window.showInformationMessage(initializingExtFiles);
 
-      try {
-        await viewInstance.initExcludeFile();
-      } catch (error) {
-        window.showErrorMessage(cannotWriteContent);
-      }
+    try {
+      await viewInstance.initExcludeFile();
+    } catch (error: any) {
+      logger.appendLine(`Error: [initExcludeFile] ${error.message}`);
+      window.showErrorMessage(cannotWriteContent);
     }
   });
 

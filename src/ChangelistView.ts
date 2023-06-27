@@ -248,6 +248,10 @@ export class ChangeListView {
   /* IO methods */
 
   public async initExcludeFile() {
+    if (await this.isExcludeInitialized()) {
+      return;
+    }
+
     const oldContent = await this.parser.getExcludeContent();
 
     const newContent = this.stringify.prepareExcludeContent(oldContent, {
