@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { emptySymbol, noFilesPlaceholder } from './constants';
-import { documentIcon, folderIcon } from './constants/icons';
-import { logger } from './logger';
+import { emptySymbol, noFilesPlaceholder } from '../constants';
+import { documentIcon, folderIcon } from '../constants/icons';
+import { logger } from '../core/logger';
 
 export class ChangelistsTreeDataProvider
   implements vscode.TreeDataProvider<Key>

@@ -2,6 +2,10 @@
 
 All notable changes to the "git-changelists" extension will be documented in this file.
 
+### 0.2.1
+- Fix refresh when git repo not found but present in workspace
+- Refactor code to separate managers
+
 ### 0.1.10
 - Fix init logic
 

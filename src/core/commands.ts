@@ -1,7 +1,7 @@
 import { window, commands, ExtensionContext } from 'vscode';
-import { Key } from './ChangelistProvider';
-import { ChangeListView } from './ChangelistView';
-import { getWorkspaceRootPath, noFilesPlaceholder } from './constants';
+import { Key } from '../view/ChangelistProvider';
+import { ChangeListView } from '../view/ChangelistView';
+import { noFilesPlaceholder } from '../constants';
 import {
   cannotWriteContent,
   changelistNameAlreadyExists,
@@ -17,82 +17,36 @@ import {
   selectChagelistToAddFile,
   workspaceNotFound,
   workspaceNotTrusted,
-} from './constants/messages';
+} from '../constants/messages';
 import { logger } from './logger';
 import { store } from './store';
-import { childExecAsync } from './utils';
-
-const gitCommands = {
-  add: (...files: string[]) => `git add ${files.join(' ')}`,
-  addForce: (...files: string[]) => `git add -f ${files.join(' ')}`,
-  assumeUnchanged: (...files: string[]) =>
-    `git update-index --assume-unchanged ${files.join(' ')}`,
-  noAssumeUnchanged: (...files: string[]) =>
-    `git update-index --no-assume-unchanged ${files.join(' ')}`,
-};
-
-const gitExecComands = {
-  add:
-    (...files: string[]) =>
-    (cwd?: string) =>
-      childExecAsync(gitCommands.add(...files), cwd),
-  addForce:
-    (...files: string[]) =>
-    (cwd?: string) =>
-      childExecAsync(gitCommands.addForce(...files), cwd),
-  assumeUnchanged:
-    (...files: string[]) =>
-    (cwd?: string) =>
-      childExecAsync(gitCommands.assumeUnchanged(...files), cwd),
-  noAssumeUnchanged:
-    (...files: string[]) =>
-    (cwd?: string) =>
-      childExecAsync(gitCommands.noAssumeUnchanged(...files), cwd),
-};
-
-const extComands = {
-  extName: 'git-changelists',
-  prefix: '',
-  get init() {
-    return `${this.extName}.init`;
-  },
-  get refresh() {
-    return `${this.prefix}.refresh`;
-  },
-  get createNew() {
-    return `${this.prefix}.createNew`;
-  },
-  get rename() {
-    return `${this.prefix}.rename`;
-  },
-  get removeChangeList() {
-    return `${this.prefix}.removeChangeList`;
-  },
-  get stageChangeList() {
-    return `${this.prefix}.stageChangeList`;
-  },
-  get removeFile() {
-    return `${this.prefix}.removeFile`;
-  },
-  get addFileToChangelist() {
-    return `${this.prefix}.addFileToChangelist`;
-  },
-  get stageFile() {
-    return `${this.prefix}.stageFile`;
-  },
-};
+import { WorkspaceManager } from '../modules/WorkspaceManager';
+import { extComands } from '../constants/extension';
+import { GitCommandNamesEnum } from '../enum/git-commands.enum';
+import { GitCommandsManager } from '../modules/GitCommands';
 
 async function checkPrerequisites(
   viewInstance: ChangeListView,
   checkExcludeInitialized = true
 ) {
-  if (!store.workspaceFound) {
+  if (!WorkspaceManager.isWorkspaceFound) {
     window.showErrorMessage(workspaceNotFound);
     return false;
-  } else if (!store.workspaceIsTrusted) {
+  }
+
+  if (!WorkspaceManager.isWorkspaceTrusted) {
     window.showErrorMessage(workspaceNotTrusted);
     return false;
-  } else if (checkExcludeInitialized) {
+  }
+
+  store.checkGitInitialized(WorkspaceManager.workspaceRootPath);
+
+  if (!store.isGitRepoFound) {
+    window.showErrorMessage(gitRepoNotFound);
+    return false;
+  }
+
+  if (checkExcludeInitialized) {
     try {
       if (!(await viewInstance.isExcludeInitialized())) {
         return await viewInstance.askToInitExcludeFile();
@@ -100,9 +54,6 @@ async function checkPrerequisites(
     } catch (error) {
       return false;
     }
-  } else if (!store.gitRepoFound) {
-    window.showErrorMessage(gitRepoNotFound);
-    return false;
   }
 
   return true;
@@ -111,12 +62,18 @@ async function checkPrerequisites(
 const registerCommand = (
   command: string,
   viewInstance: ChangeListView,
-  handler: (param: any) => Promise<void>
+  handler: (param: any) => Promise<void>,
+  options: { checkExcludeInitialized?: boolean } = {}
 ) => {
   commands.registerCommand(command, async (param: any) => {
     logger.appendLine(`command: ${command}`);
 
-    if (!(await checkPrerequisites(viewInstance, false))) {
+    if (
+      !(await checkPrerequisites(
+        viewInstance,
+        options.checkExcludeInitialized ?? false
+      ))
+    ) {
       return;
     }
 
@@ -133,28 +90,6 @@ const registerCommand = (
   });
 };
 
-const tryExecGitCommand = async (
-  command: keyof typeof gitExecComands,
-  cwd: string | undefined,
-  ...filePath: string[]
-) => {
-  console.log('Executing command: ', gitCommands[command](...filePath));
-
-  try {
-    const stdout = await gitExecComands[command]?.(...filePath)?.(cwd);
-
-    const result = stdout.toString();
-
-    console.log(command, 'success: true;', result);
-
-    return { succeeded: true, result };
-  } catch (error: unknown) {
-    console.error(command, 'success: false;', (error as Error).message);
-
-    return { succeeded: false, error };
-  }
-};
-
 function registerCommands(options: {
   viewInstance: ChangeListView;
   context: ExtensionContext;
@@ -163,22 +98,36 @@ function registerCommands(options: {
 
   extComands.prefix = viewInstance.config.id;
 
-  const wsPath = getWorkspaceRootPath();
+  const wsPath = WorkspaceManager.workspaceRootPath;
 
-  registerCommand(extComands.init, viewInstance, async () => {
-    window.showInformationMessage(initializingExtFiles);
+  registerCommand(
+    extComands.init,
+    viewInstance,
+    async () => {
+      window.showInformationMessage(initializingExtFiles);
 
-    try {
-      await viewInstance.initExcludeFile();
-    } catch (error: any) {
-      logger.appendLine(`Error: [initExcludeFile] ${error.message}`);
-      window.showErrorMessage(cannotWriteContent);
+      try {
+        await viewInstance.initExcludeFile();
+      } catch (error: any) {
+        logger.appendLine(`Error: [initExcludeFile] ${error.message}`);
+        window.showErrorMessage(cannotWriteContent);
+      }
+    },
+    {
+      checkExcludeInitialized: false,
     }
-  });
+  );
 
-  registerCommand(extComands.refresh, viewInstance, async () => {
-    await viewInstance.refresh(true);
-  });
+  registerCommand(
+    extComands.refresh,
+    viewInstance,
+    async () => {
+      await viewInstance.refresh(true);
+    },
+    {
+      checkExcludeInitialized: true,
+    }
+  );
 
   registerCommand(extComands.createNew, viewInstance, async () => {
     const newChangelistName = await window.showInputBox({
@@ -247,7 +196,11 @@ function registerCommands(options: {
       await Promise.all(
         Object.keys(files).map(async (fileName) => {
           if (!(await viewInstance.isUntracked(fileName, status))) {
-            await tryExecGitCommand('noAssumeUnchanged', wsPath, fileName);
+            await GitCommandsManager.tryExecAsyncGitCommand(
+              GitCommandNamesEnum.noAssumeUnchanged,
+              wsPath,
+              fileName
+            );
           }
         })
       );
@@ -275,14 +228,22 @@ function registerCommands(options: {
           viewInstance.removeFileFromChangelist(changelistName, fileName);
 
           if (!(await viewInstance.isUntracked(fileName, status))) {
-            await tryExecGitCommand('noAssumeUnchanged', wsPath, fileName);
+            await GitCommandsManager.tryExecAsyncGitCommand(
+              GitCommandNamesEnum.noAssumeUnchanged,
+              wsPath,
+              fileName
+            );
           }
         })
       );
 
       await viewInstance.onTreeChange();
 
-      await tryExecGitCommand('addForce', wsPath, ...filePaths);
+      await GitCommandsManager.tryExecAsyncGitCommand(
+        GitCommandNamesEnum.addForce,
+        wsPath,
+        ...filePaths
+      );
     }
   );
 
@@ -315,8 +276,8 @@ function registerCommands(options: {
     await viewInstance.onTreeChange();
 
     if (!(await viewInstance.isUntracked(fileName))) {
-      const result = await tryExecGitCommand(
-        'noAssumeUnchanged',
+      const result = await GitCommandsManager.tryExecAsyncGitCommand(
+        GitCommandNamesEnum.noAssumeUnchanged,
         wsPath,
         fileName
       );
@@ -357,8 +318,8 @@ function registerCommands(options: {
     await viewInstance.onTreeChange();
 
     if (!(await viewInstance.isUntracked(fileName))) {
-      const result = await tryExecGitCommand(
-        'noAssumeUnchanged',
+      const result = await GitCommandsManager.tryExecAsyncGitCommand(
+        GitCommandNamesEnum.noAssumeUnchanged,
         wsPath,
         fileName
       );
@@ -369,7 +330,11 @@ function registerCommands(options: {
       }
     }
 
-    await tryExecGitCommand('addForce', wsPath, fileName);
+    await GitCommandsManager.tryExecAsyncGitCommand(
+      GitCommandNamesEnum.addForce,
+      wsPath,
+      fileName
+    );
   });
 
   registerCommand(
@@ -406,8 +371,8 @@ function registerCommands(options: {
       viewInstance.addFileToChangelist(changelistName, fileName);
 
       if (!(await viewInstance.isUntracked(fileName))) {
-        const result = await tryExecGitCommand(
-          'assumeUnchanged',
+        const result = await GitCommandsManager.tryExecAsyncGitCommand(
+          GitCommandNamesEnum.assumeUnchanged,
           wsPath,
           fileName
         );

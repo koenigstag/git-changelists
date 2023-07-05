@@ -9,17 +9,22 @@ import {
   Uri,
 } from 'vscode';
 import { sep, posix } from 'path';
-import { GitExcludeParse, GitExcludeStringify } from './GitExclude';
-import { contentToLines, getRelativeExcludePath, transformPath } from './utils';
+import { GitExcludeParse, GitExcludeStringify } from '../modules/GitExclude';
+import {
+  contentToLines,
+  getRelativeExcludePath,
+  transformPath,
+} from '../utils/string.utils';
 import { ChangelistsTreeDataProvider, Key } from './ChangelistProvider';
-import { emptySymbol, noFilesPlaceholder } from './constants';
+import { emptySymbol, noFilesPlaceholder } from '../constants';
 import {
   AskToInitAnswers,
   askToInitExtFiles,
   cannotReadContent,
   cannotWriteContent,
-} from './constants/messages';
-import { store } from './store';
+} from '../constants/messages';
+import { store } from '../core/store';
+import { logger } from '../core/logger';
 
 export class ChangeListView {
   static view: TreeView<{
@@ -39,10 +44,10 @@ export class ChangeListView {
       try {
         await this.loadTreeFile();
 
-        store.gitRepoFound = true;
+        store.isGitRepoFound = true;
       } catch (error) {
         window.showErrorMessage(cannotReadContent);
-        store.gitRepoFound = false;
+        store.isGitRepoFound = false;
 
         return;
       }
@@ -96,8 +101,8 @@ export class ChangeListView {
   }
 
   public async isUntracked(filePath: string, lines?: string[]) {
-    const gitStatusLines = lines ?? await this.parser.getGitStatus();
-    
+    const gitStatusLines = lines ?? (await this.parser.getGitStatus());
+
     return gitStatusLines.some((line) => {
       const status = line.trimStart().split(' ').at(0);
 
@@ -136,7 +141,9 @@ export class ChangeListView {
 
   public addNewChangelist(
     name: string,
-    files: string[] = [/* noFilesPlaceholder */]
+    files: string[] = [
+      /* noFilesPlaceholder */
+    ]
   ) {
     const transName = this.transformChangelistName(name);
 
@@ -212,10 +219,10 @@ export class ChangeListView {
 
     try {
       lines = await this.parser.getExcludeContentLines();
-      store.gitRepoFound = true;
+      store.isGitRepoFound = true;
     } catch (error) {
       window.showErrorMessage(cannotReadContent);
-      store.gitRepoFound = false;
+      store.isGitRepoFound = false;
 
       throw error;
     }
@@ -224,9 +231,7 @@ export class ChangeListView {
   }
 
   public async askToInitExcludeFile() {
-    const answers = Object.keys(AskToInitAnswers).filter((item) =>
-      isNaN(Number(item))
-    );
+    const answers = Object.values(AskToInitAnswers);
 
     const choice = await window.showQuickPick(answers, {
       title: askToInitExtFiles,
@@ -252,11 +257,15 @@ export class ChangeListView {
       return;
     }
 
+    logger.appendLine('Initializing exclude file...');
+
     const oldContent = await this.parser.getExcludeContent();
 
     const newContent = this.stringify.prepareExcludeContent(oldContent, {
       // eslint-disable-next-line @typescript-eslint/naming-convention
-      Changes: { /* [noFilesPlaceholder]: {} */ },
+      Changes: {
+        /* [noFilesPlaceholder]: {} */
+      },
     });
 
     await this.writeTextToExcludeFile(oldContent, newContent);

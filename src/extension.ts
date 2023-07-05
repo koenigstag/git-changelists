@@ -1,48 +1,28 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { ChangeListView } from './ChangelistView';
-import registerCommands from './commands';
-import { store } from './store';
-import { execSync } from 'child_process';
-import { logger } from './logger';
-import { getWorkspaceRootPath } from './constants';
-
-export const EXTENSION_ID = 'git-changelists';
-
-const isGitInitialized = () => {
-  try {
-    execSync('git rev-parse --is-inside-work-tree', {
-      encoding: 'utf-8',
-      cwd: getWorkspaceRootPath(),
-    });
-    return true;
-  } catch (error) {
-    return false;
-  }
-};
+import { ChangeListView } from './view/ChangelistView';
+import registerCommands from './core/commands';
+import { store } from './core/store';
+import { logger } from './core/logger';
+import { GitManager } from './modules/GitManager';
+import { WorkspaceManager } from './modules/WorkspaceManager';
+import { EXTENSION_ID } from './constants/extension';
 
 const checkPrerequisites = () => {
-  if (
-    !vscode.workspace.workspaceFolders ||
-    vscode.workspace.workspaceFolders.length === 0
-  ) {
+  if (!WorkspaceManager.isWorkspaceFound) {
     logger.appendLine('This extension will not work outside workspace');
-    store.workspaceFound = false;
 
     return;
   }
-  store.workspaceFound = true;
 
-  if (!vscode.workspace.isTrusted) {
+  if (!WorkspaceManager.isWorkspaceTrusted) {
     logger.appendLine(
       'This extension will not work inside untrusted workspace'
     );
-    store.workspaceIsTrusted = false;
 
     return;
   }
-  store.workspaceIsTrusted = true;
 };
 
 // This method is called when your extension is activated
@@ -58,26 +38,19 @@ export async function activate(context: vscode.ExtensionContext) {
 
   /*  */
 
-  const workspaceRootPath = getWorkspaceRootPath();
+  const workspaceRootPath = WorkspaceManager.workspaceRootPath;
 
   logger.appendLine('Workspace rootpath: ' + workspaceRootPath);
 
   /*  */
-  const gitRootPath = `${workspaceRootPath}/.git`; // TODO fix
 
-  const config = vscode.workspace.getConfiguration();
-  const gitConf: any = config.get('git');
+  let gitRootPath = GitManager.getLegacyGitRepoPath(workspaceRootPath); // TODO: fix in case of multiple git repos
 
-  const gitEnabled = gitConf.enabled;
+  const gitEnabled = WorkspaceManager.workspaceGitEnabled;
 
-  const isGitRepoFound = isGitInitialized();
-
-  logger.appendLine('Is Git repo active: ' + isGitRepoFound);
-
-  if (gitEnabled && isGitRepoFound) {
-    store.gitRepoFound = true;
-  } else {
-    store.gitRepoFound = false;
+  if (gitEnabled) {
+    store.checkGitInitialized(workspaceRootPath);
+    logger.appendLine('Is Git repo active: ' + store.isGitRepoFound);
   }
 
   /*  */
@@ -89,7 +62,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   registerCommands({ viewInstance, context });
 
-  if (store.gitRepoFound) {
+  if (store.isGitRepoFound) {
     await viewInstance.initExcludeFile();
     await viewInstance.refresh(true);
   }

@@ -6,8 +6,10 @@ import {
   removeSpecialSymbs,
   workzoneEndRegex,
   workzoneStartRegex,
-} from './constants/regexp';
-import { childExecAsync, contentToLines, linesToText } from './utils';
+} from '../constants/regexp';
+import { contentToLines, linesToText } from '../utils/string.utils';
+import { GitCommandsManager } from './GitCommands';
+import { GitCommandNamesEnum } from '../enum/git-commands.enum';
 
 export type Changelist = { lineIndex: number; name: string; files: string[] };
 export type WorkzoneIndexes = { startIndex: number; endIndex: number };
@@ -19,8 +21,8 @@ export class GitExcludeParse {
 
   async getGitStatus(): Promise<string[]> {
     try {
-      const status = await childExecAsync(
-        'git status -s',
+      const status = await GitCommandsManager.execAsync(
+        GitCommandNamesEnum.status,
         resolve(this.gitRootPath, '../')
       );
 
