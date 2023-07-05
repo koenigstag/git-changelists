@@ -9,7 +9,7 @@ export const cannotReadContent = gitRepoNotFound;
 export const cannotWriteContent = 'Cannot write changelists to file';
 
 export const askToInitExtFiles = 'Would you like to initialize Git Changelists ? \nYou can do it later using command "Initialize Git Changelists"';
-export enum askToInitAnswers {
+export enum AskToInitAnswers {
   yes = 'Yes',
   no = 'No, later',
 };

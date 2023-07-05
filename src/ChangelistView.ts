@@ -14,7 +14,7 @@ import { contentToLines, getRelativeExcludePath, transformPath } from './utils';
 import { ChangelistsTreeDataProvider, Key } from './ChangelistProvider';
 import { emptySymbol, noFilesPlaceholder } from './constants';
 import {
-  askToInitAnswers,
+  AskToInitAnswers,
   askToInitExtFiles,
   cannotReadContent,
   cannotWriteContent,
@@ -224,7 +224,7 @@ export class ChangeListView {
   }
 
   public async askToInitExcludeFile() {
-    const answers = Object.keys(askToInitAnswers).filter((item) =>
+    const answers = Object.keys(AskToInitAnswers).filter((item) =>
       isNaN(Number(item))
     );
 
@@ -232,7 +232,7 @@ export class ChangeListView {
       title: askToInitExtFiles,
     });
 
-    if (choice === askToInitAnswers.yes) {
+    if (choice === AskToInitAnswers.yes) {
       try {
         await this.initExcludeFile();
 
