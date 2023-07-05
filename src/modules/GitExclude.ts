@@ -61,14 +61,14 @@ export class GitExcludeParse {
     return { startIndex, endIndex };
   }
 
-  getWorkzoneLines(contentLines: string[]) {
+  getWorkzoneLines(contentLines: string[]): string[] {
     const { startIndex, endIndex } =
       GitExcludeParse.getWorkzoneIndexes(contentLines);
 
     return contentLines.slice(startIndex + 1, endIndex);
   }
 
-  checkIfWorkzoneExists(contentLines: string[]) {
+  checkIfWorkzoneExists(contentLines: string[]): boolean {
     try {
       GitExcludeParse.getWorkzoneIndexes(contentLines);
 
@@ -78,7 +78,7 @@ export class GitExcludeParse {
     }
   }
 
-  transformChangelistArrayToTree(changelists: Changelist[]) {
+  transformChangelistArrayToTree(changelists: Changelist[]): object {
     const tree = new Map<string, { [key: string]: any }>();
     changelists.forEach((item) => {
       tree.set(item.name, {
@@ -121,7 +121,7 @@ export class GitExcludeParse {
     return withFiles;
   }
 
-  getOtherContent(originalContent: string) {
+  getOtherContent(originalContent: string): string {
     const lines = contentToLines(originalContent);
 
     const { startIndex, endIndex } = GitExcludeParse.getWorkzoneIndexes(lines);

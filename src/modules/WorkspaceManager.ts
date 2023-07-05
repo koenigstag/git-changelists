@@ -17,7 +17,7 @@ export class WorkspaceManager {
     return this.workspace.isTrusted;
   }
 
-  static get workspaceRootPath(): string | undefined {
+  static get legacyWorkspaceRootPath(): string | undefined {
     return this.workspaceFolders?.[0].uri.fsPath;
   }
 

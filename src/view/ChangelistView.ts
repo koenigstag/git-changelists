@@ -80,11 +80,9 @@ export class ChangeListView {
       const { document } = e;
 
       const definitelyPosix = document.uri.fsPath.split(sep).join(posix.sep);
+      const gitRelativePath = getRelativeExcludePath('.git');
 
-      if (
-        !document.isUntitled &&
-        definitelyPosix.includes(getRelativeExcludePath('.git'))
-      ) {
+      if (!document.isUntitled && definitelyPosix.includes(gitRelativePath)) {
         setTimeout(async () => {
           try {
             if (!document.isClosed) {
@@ -126,8 +124,10 @@ export class ChangeListView {
   public async onTreeChange() {
     try {
       await this.writeTreeToExclude();
-    } catch (error) {
+    } catch (error: any) {
       window.showErrorMessage(cannotWriteContent);
+
+      throw error;
     }
   }
 
@@ -242,7 +242,8 @@ export class ChangeListView {
         await this.initExcludeFile();
 
         return true;
-      } catch (error) {
+      } catch (error: any) {
+        logger.appendLine('Error [askToInitExcludeFile] ' + error.message);
         window.showErrorMessage(cannotWriteContent);
       }
     }

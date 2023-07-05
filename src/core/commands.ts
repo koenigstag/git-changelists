@@ -39,7 +39,7 @@ async function checkPrerequisites(
     return false;
   }
 
-  store.checkGitInitialized(WorkspaceManager.workspaceRootPath);
+  store.checkGitInitialized(WorkspaceManager.legacyWorkspaceRootPath);
 
   if (!store.isGitRepoFound) {
     window.showErrorMessage(gitRepoNotFound);
@@ -49,7 +49,7 @@ async function checkPrerequisites(
   if (checkExcludeInitialized) {
     try {
       if (!(await viewInstance.isExcludeInitialized())) {
-        return await viewInstance.askToInitExcludeFile();
+        return await viewInstance.initExcludeFile();
       }
     } catch (error) {
       return false;
@@ -63,7 +63,10 @@ const registerCommand = (
   command: string,
   viewInstance: ChangeListView,
   handler: (param: any) => Promise<void>,
-  options: { checkExcludeInitialized?: boolean } = {}
+  options: {
+    checkExcludeInitialized?: boolean;
+    treeChangeIgnore?: boolean;
+  } = {}
 ) => {
   commands.registerCommand(command, async (param: any) => {
     logger.appendLine(`command: ${command}`);
@@ -80,11 +83,13 @@ const registerCommand = (
     try {
       await handler(param);
 
-      await viewInstance.onTreeChange();
-    } catch (error: unknown) {
-      console.error(
-        `Error while running handler of command '${command}: '`,
-        error
+      if (!options.treeChangeIgnore) {
+        await viewInstance.onTreeChange();
+      }
+    } catch (error: any) {
+      logger.appendLine(
+        `Error while running handler of command '${command}: ': ` +
+          error.message
       );
     }
   });
@@ -98,7 +103,7 @@ function registerCommands(options: {
 
   extComands.prefix = viewInstance.config.id;
 
-  const wsPath = WorkspaceManager.workspaceRootPath;
+  const wsPath = WorkspaceManager.legacyWorkspaceRootPath;
 
   registerCommand(
     extComands.init,
@@ -107,7 +112,7 @@ function registerCommands(options: {
       window.showInformationMessage(initializingExtFiles);
 
       try {
-        await viewInstance.initExcludeFile();
+        await viewInstance.askToInitExcludeFile();
       } catch (error: any) {
         logger.appendLine(`Error: [initExcludeFile] ${error.message}`);
         window.showErrorMessage(cannotWriteContent);
@@ -126,6 +131,7 @@ function registerCommands(options: {
     },
     {
       checkExcludeInitialized: true,
+      treeChangeIgnore: true,
     }
   );
 

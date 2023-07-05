@@ -8,6 +8,7 @@ import { logger } from './core/logger';
 import { GitManager } from './modules/GitManager';
 import { WorkspaceManager } from './modules/WorkspaceManager';
 import { EXTENSION_ID } from './constants/extension';
+import { addGitToPath } from './utils/string.utils';
 
 const checkPrerequisites = () => {
   if (!WorkspaceManager.isWorkspaceFound) {
@@ -32,28 +33,32 @@ export async function activate(context: vscode.ExtensionContext) {
 
   logger.appendLine(process.env.NODE_ENV ?? '');
 
-  /*  */
+  /* check and inform problems  */
 
   checkPrerequisites();
 
-  /*  */
+  /* get workspaces */
 
-  const workspaceRootPath = WorkspaceManager.workspaceRootPath;
+  const workspaces = WorkspaceManager.workspaceFolders ?? [];
 
-  logger.appendLine('Workspace rootpath: ' + workspaceRootPath);
+  logger.appendLine('Workspace folders: ' + workspaces?.map((w) => w.name));
 
-  /*  */
-
-  let gitRootPath = GitManager.getLegacyGitRepoPath(workspaceRootPath); // TODO: fix in case of multiple git repos
+  /* check git metadata in workspace */
 
   const gitEnabled = WorkspaceManager.workspaceGitEnabled;
 
   if (gitEnabled) {
-    store.checkGitInitialized(workspaceRootPath);
-    logger.appendLine('Is Git repo active: ' + store.isGitRepoFound);
+    await store.initGitProjectFolders(workspaces);
+    logger.appendLine(
+      'Git project folders: ' +
+        Array.from(store.gitProjectFolders.values()).flat(2)
+    );
   }
 
-  /*  */
+  /* init extension */
+
+  // legacy support
+  const gitRootPath = GitManager.getLegacyGitRepoPath();
 
   const viewInstance = new ChangeListView(context, {
     id: `${EXTENSION_ID}.views.explorer`,
