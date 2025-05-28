@@ -39,8 +39,13 @@ export async function activate(context: vscode.ExtensionContext) {
   /*  */
 
   const workspaceRootPath = WorkspaceManager.workspaceRootPath;
+  const workspaceRootUri = WorkspaceManager.workspaceRootUri;
 
   logger.appendLine('Workspace rootpath: ' + workspaceRootPath);
+
+  if (!workspaceRootPath || !workspaceRootUri) {
+    return;
+  }
 
   /*  */
 
@@ -58,12 +63,13 @@ export async function activate(context: vscode.ExtensionContext) {
   const viewInstance = new ChangeListView(context, {
     id: `${EXTENSION_ID}.views.explorer`,
     gitRootPath,
+    workspaceRootUri,
   });
 
   registerCommands({ viewInstance, context });
 
   if (store.isGitRepoFound) {
-    await viewInstance.initExcludeFile();
+    await viewInstance.initConfigFile();
     await viewInstance.refresh(true);
   }
 }
