@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { emptySymbol, noFilesPlaceholder } from '../constants';
-import { documentIcon, folderIcon } from '../constants/icons';
+import { folderIcon } from '../constants/icons';
 import { logger } from '../core/logger';
 
 export class ChangelistsTreeDataProvider
@@ -109,7 +109,7 @@ export class Key {
   constructor(readonly key: string, readonly uri?: vscode.Uri) {}
 }
 
-export class ChangelistItem {
+export class ChangelistItem implements vscode.TreeItem {
   contextValue = 'changelist';
   iconPath = folderIcon;
   tooltip = new vscode.MarkdownString(`$(zap) Changelist: ${this.key}`, true);
@@ -123,15 +123,15 @@ export class ChangelistItem {
   }
 }
 
-export class ChangelistFile {
+export class ChangelistFile implements vscode.TreeItem {
   contextValue = 'filePath';
   label = this.key;
-  iconPath?: { light: string; dark: string };
+  resourceUri?: vscode.Uri | undefined;
   tooltip = `Filename: ${this.key}`;
   command?: vscode.Command;
 
   constructor(readonly key: string, readonly uri?: vscode.Uri, id?: string) {
-    this.iconPath = key === noFilesPlaceholder ? undefined : documentIcon;
+    this.resourceUri = uri;
     this.command =
       key === noFilesPlaceholder
         ? undefined
