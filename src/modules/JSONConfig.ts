@@ -173,7 +173,7 @@ export class JSONConfigModule {
 
       const jsonString = JSON.stringify(config, null, 2);
       const uintArray = new TextEncoder().encode(jsonString);
-      vscode.workspace.fs.writeFile(fullPath, uintArray);
+      await vscode.workspace.fs.writeFile(fullPath, uintArray);
 
       return true;
     } catch (error) {

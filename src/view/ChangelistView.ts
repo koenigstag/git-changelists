@@ -131,7 +131,7 @@ export class ChangeListView {
       const lists = this.parser.getChangelistArrayFromContent(lines);
       const tree = this.parser.transformChangelistArrayToTree(lists);
 
-      ChangeListView.tree = Object.assign({}, tree, debugTree);
+      ChangeListView.tree = Object.assign({}, tree);
 
       return true;
     }
@@ -149,7 +149,7 @@ export class ChangeListView {
 
       const tree = this.jsonConfigModule.jsonConfigToTree(jsonConfig);
 
-      ChangeListView.tree = Object.assign({}, tree, debugTree);
+      ChangeListView.tree = Object.assign({}, tree);
 
       return true;
     }
@@ -176,7 +176,7 @@ export class ChangeListView {
     return name;
   }
 
-  public addNewChangelist(
+  public async addNewChangelist(
     name: string,
     files: string[] = [
       /* noFilesPlaceholder */
@@ -192,19 +192,19 @@ export class ChangeListView {
       }, {}),
     };
 
-    this.refresh();
+    await this.refresh();
   }
 
-  public removeChangelist(name: string) {
+  public async removeChangelist(name: string) {
     const transName = this.transformChangelistName(name);
 
     delete ChangeListView.tree[transName];
     delete ChangeListView.nodes[transName];
 
-    this.refresh();
+    await this.refresh();
   }
 
-  public renameChangelist(name: string, newName: string) {
+  public async renameChangelist(name: string, newName: string) {
     const transName = this.transformChangelistName(name);
 
     const content = ChangeListView.tree[transName];
@@ -213,10 +213,10 @@ export class ChangeListView {
     delete ChangeListView.tree[transName];
     delete ChangeListView.nodes[transName];
 
-    this.refresh();
+    await this.refresh();
   }
 
-  public addFileToChangelist(name: string, file: string) {
+  public async addFileToChangelist(name: string, file: string) {
     const transName = this.transformChangelistName(name);
 
     const changelist = ChangeListView.tree[transName];
@@ -240,10 +240,10 @@ export class ChangeListView {
       delete changelist[noFilesPlaceholder];
     }
 
-    this.refresh();
+    await this.refresh();
   }
 
-  public removeFileFromChangelist(name: string, file: string) {
+  public async removeFileFromChangelist(name: string, file: string) {
     const transName = this.transformChangelistName(name);
 
     const changelist = ChangeListView.tree[transName];
@@ -258,7 +258,7 @@ export class ChangeListView {
 
     delete changelist[file];
 
-    this.refresh();
+    await this.refresh();
   }
 
   public async isConfigInitialized() {
@@ -313,7 +313,7 @@ export class ChangeListView {
 
     await this.writeContentToConfigFile(newJsonConfig);
 
-    this.refresh(true);
+    await this.refresh(true);
   }
 
   public async writeContentToConfigFile(newJsonConfig: JSONConfig) {
@@ -336,14 +336,3 @@ export class ChangeListView {
     await this.writeContentToConfigFile(newJsonConfig);
   }
 }
-
-const debugTree: any = {
-  /* a: {
-    aa: {},
-    ab: {},
-  },
-  b: {
-    ba: {},
-    bb: {},
-  }, */
-};

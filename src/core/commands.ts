@@ -147,7 +147,7 @@ function registerCommands(options: {
       return;
     }
 
-    viewInstance.addNewChangelist(newChangelistName);
+    await viewInstance.addNewChangelist(newChangelistName);
   });
 
   registerCommand(extComands.rename, viewInstance, async (node: Key) => {
@@ -174,7 +174,7 @@ function registerCommands(options: {
       return;
     }
 
-    viewInstance.renameChangelist(prevName, newName);
+    await viewInstance.renameChangelist(prevName, newName);
   });
 
   registerCommand(
@@ -189,7 +189,7 @@ function registerCommands(options: {
 
       const files = ChangeListView.tree[changelistName];
 
-      viewInstance.removeChangelist(changelistName);
+      await viewInstance.removeChangelist(changelistName);
 
       const status = await viewInstance.getGitStatus();
 
@@ -225,7 +225,7 @@ function registerCommands(options: {
 
       await Promise.all(
         Object.keys(files).map(async (fileName) => {
-          viewInstance.removeFileFromChangelist(changelistName, fileName);
+          await viewInstance.removeFileFromChangelist(changelistName, fileName);
 
           if (!(await viewInstance.isUntracked(fileName, status))) {
             await GitCommandsManager.tryExecAsyncGitCommand(
@@ -271,7 +271,7 @@ function registerCommands(options: {
       // viewInstance.addFileToChangelist(changelistName, noFilesPlaceholder);
     }
 
-    viewInstance.removeFileFromChangelist(changelistName, fileName);
+    await viewInstance.removeFileFromChangelist(changelistName, fileName);
 
     const text = fileWasRemovedFromChangelist.replace('{file}', fileName).replace('{changelist}', changelistName);
     window.showInformationMessage(text);
@@ -316,7 +316,7 @@ function registerCommands(options: {
       // viewInstance.addFileToChangelist(changelistName, noFilesPlaceholder);
     }
 
-    viewInstance.removeFileFromChangelist(changelistName, fileName);
+    await viewInstance.removeFileFromChangelist(changelistName, fileName);
 
     const text = fileWasRemovedFromChangelist.replace('{file}', fileName).replace('{changelist}', changelistName);
     window.showInformationMessage(text);
@@ -374,7 +374,7 @@ function registerCommands(options: {
         return;
       }
 
-      viewInstance.addFileToChangelist(changelistName, fileName);
+      await viewInstance.addFileToChangelist(changelistName, fileName);
 
       const text = fileWasAddedToChangelist.replace('{file}', fileName).replace('{changelist}', changelistName);
       window.showInformationMessage(text);
