@@ -30,6 +30,12 @@ export const fileWasRestored =
 
 export const fileAssumedUnchanged = '{file} is assumed to be unchanged.';
 
+export const fileWasAddedToChangelist =
+  'File was added to Changelist {changelist}.';
+
+export const fileWasRemovedFromChangelist =
+  'File was removed from Changelist {changelist}.';
+
 export const selectChagelistToAddFile =
   'Select Changelist where you want to add file';
 

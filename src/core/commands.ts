@@ -8,8 +8,8 @@ import {
   changelistNameMandatory,
   changelistNotFound,
   enterUniqueChangelistName,
-  fileAssumedUnchanged,
-  fileWasRestored,
+  fileWasAddedToChangelist,
+  fileWasRemovedFromChangelist,
   gitRepoNotFound,
   initializingExtFiles,
   newChangelistPlaceholder,
@@ -273,19 +273,22 @@ function registerCommands(options: {
 
     viewInstance.removeFileFromChangelist(changelistName, fileName);
 
+    const text = fileWasRemovedFromChangelist.replace('{file}', fileName).replace('{changelist}', changelistName);
+    window.showInformationMessage(text);
+
     await viewInstance.onTreeChange();
 
     if (!(await viewInstance.isUntracked(fileName))) {
-      const result = await GitCommandsManager.tryExecAsyncGitCommand(
+      await GitCommandsManager.tryExecAsyncGitCommand(
         GitCommandNamesEnum.noAssumeUnchanged,
         wsPath,
         fileName
       );
 
-      if (result.succeeded) {
-        const text = fileWasRestored.replace('{file}', fileName);
-        window.showInformationMessage(text);
-      }
+      // if (result.succeeded) {
+      //   const text = fileWasRestored.replace('{file}', fileName);
+      //   window.showInformationMessage(text);
+      // }
     }
   });
 
@@ -315,19 +318,22 @@ function registerCommands(options: {
 
     viewInstance.removeFileFromChangelist(changelistName, fileName);
 
+    const text = fileWasRemovedFromChangelist.replace('{file}', fileName).replace('{changelist}', changelistName);
+    window.showInformationMessage(text);
+
     await viewInstance.onTreeChange();
 
     if (!(await viewInstance.isUntracked(fileName))) {
-      const result = await GitCommandsManager.tryExecAsyncGitCommand(
+      await GitCommandsManager.tryExecAsyncGitCommand(
         GitCommandNamesEnum.noAssumeUnchanged,
         wsPath,
         fileName
       );
 
-      if (result.succeeded) {
-        const text = fileWasRestored.replace('{file}', fileName);
-        window.showInformationMessage(text);
-      }
+      // if (result.succeeded) {
+      //   const text = fileWasRestored.replace('{file}', fileName);
+      //   window.showInformationMessage(text);
+      // }
     }
 
     await GitCommandsManager.tryExecAsyncGitCommand(
@@ -370,18 +376,22 @@ function registerCommands(options: {
 
       viewInstance.addFileToChangelist(changelistName, fileName);
 
-      if (!(await viewInstance.isUntracked(fileName))) {
-        const result = await GitCommandsManager.tryExecAsyncGitCommand(
-          GitCommandNamesEnum.assumeUnchanged,
-          wsPath,
-          fileName
-        );
+      const text = fileWasAddedToChangelist.replace('{file}', fileName).replace('{changelist}', changelistName);
+      window.showInformationMessage(text);
 
-        if (result.succeeded) {
-          const text = fileAssumedUnchanged.replace('{file}', fileName);
-          window.showInformationMessage(text);
-        }
-      }
+      // deprecated flow
+      // if (!(await viewInstance.isUntracked(fileName))) {
+      //   const result = await GitCommandsManager.tryExecAsyncGitCommand(
+      //     GitCommandNamesEnum.assumeUnchanged,
+      //     wsPath,
+      //     fileName
+      //   );
+
+      //   if (result.succeeded) {
+      //     const text = fileAssumedUnchanged.replace('{file}', fileName).replace('{changelist}', changelistName);
+      //     window.showInformationMessage(text);
+      //   }
+      // }
     }
   );
 }

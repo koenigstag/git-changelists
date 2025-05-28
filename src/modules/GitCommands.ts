@@ -53,10 +53,21 @@ export class GitCommandsManager {
     command: GitCommandNamesEnum,
     cwd: string | undefined,
     ...args: string[]
-  ) {
+  ): Promise<{
+    succeeded: boolean;
+    result?: string;
+    error?: Error;
+  }> {
     logger.appendLine(
       'Executing command: ' + this.gitCommand(command, ...args)
     );
+
+    if (command === GitCommandNamesEnum.assumeUnchanged) {
+      return {
+        succeeded: false,
+        result: 'deprecated',
+      }
+    }
 
     try {
       const stdout = await this.execAsync(command, cwd, ...args);
@@ -64,9 +75,10 @@ export class GitCommandsManager {
       logger.appendLine(command + ' success: true; ' + stdout);
 
       return { succeeded: true, result: stdout };
-    } catch (error: unknown) {
+    } catch (err: unknown) {
+      const error = err as Error;
       logger.appendLine(
-        command + ' success: false; ' + (error as Error).message
+        command + ' success: false; ' + error.message
       );
 
       return { succeeded: false, error };
