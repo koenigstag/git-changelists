@@ -48,8 +48,8 @@ async function checkPrerequisites(
 
   if (checkExcludeInitialized) {
     try {
-      if (!(await viewInstance.isExcludeInitialized())) {
-        return await viewInstance.askToInitExcludeFile();
+      if (!(await viewInstance.isConfigInitialized())) {
+        return await viewInstance.askToInitConfigFile();
       }
     } catch (error) {
       return false;
@@ -107,7 +107,7 @@ function registerCommands(options: {
       window.showInformationMessage(initializingExtFiles);
 
       try {
-        await viewInstance.initExcludeFile();
+        await viewInstance.initConfigFile();
       } catch (error: any) {
         logger.appendLine(`Error: [initExcludeFile] ${error.message}`);
         window.showErrorMessage(cannotWriteContent);
@@ -191,7 +191,7 @@ function registerCommands(options: {
 
       viewInstance.removeChangelist(changelistName);
 
-      const status = await viewInstance.parser.getGitStatus();
+      const status = await viewInstance.getGitStatus();
 
       await Promise.all(
         Object.keys(files).map(async (fileName) => {
@@ -221,7 +221,7 @@ function registerCommands(options: {
 
       const filePaths = Object.keys(files);
 
-      const status = await viewInstance.parser.getGitStatus();
+      const status = await viewInstance.getGitStatus();
 
       await Promise.all(
         Object.keys(files).map(async (fileName) => {

@@ -2,6 +2,11 @@ import * as vscode from 'vscode';
 import { emptySymbol, noFilesPlaceholder } from '../constants';
 import { folderIcon } from '../constants/icons';
 import { logger } from '../core/logger';
+import { TreeType } from './ChangelistView';
+
+export class Key {
+  constructor(readonly key: string, readonly uri?: vscode.Uri) {}
+}
 
 export class ChangelistsTreeDataProvider
   implements vscode.TreeDataProvider<Key>
@@ -15,11 +20,11 @@ export class ChangelistsTreeDataProvider
 
   constructor(
     private readonly parent: {
-      tree: { [key: string]: any };
-      nodes: { [key: string]: any };
+      tree: TreeType;
+      nodes: TreeType;
     },
     private readonly id: string,
-    private readonly workspacePath: string
+    private readonly workspacePath: vscode.Uri
   ) {
     vscode.commands.registerCommand(`${id}.openFile`, (resource: vscode.Uri) => {
       logger.appendLine(`openResource-openFile: ${resource.fsPath}`);
@@ -38,9 +43,10 @@ export class ChangelistsTreeDataProvider
 
   getChildren(element: Key): Key[] {
     return this._getChildren(element)
-      .map((key) =>
-        this._getNode(key, vscode.Uri.file(`${this.workspacePath}/${key}`))
-      )
+      .map((key) => {
+        const path = vscode.Uri.joinPath(this.workspacePath, key).fsPath;
+        return this._getNode(key, vscode.Uri.file(path));
+      })
       .filter((item) => item !== undefined) as Key[];
   }
 
@@ -75,8 +81,8 @@ export class ChangelistsTreeDataProvider
     const fileCount = Object.keys(elemCopy ?? {}).length;
 
     const item = isChangelistItem
-      ? new ChangelistItem(key, fileCount)
-      : new ChangelistFile(key, uri, this.id);
+      ? new ChangelistFolder(key, fileCount)
+      : new ChangelistFile(key, this.id, uri);
 
     return item;
   }
@@ -105,11 +111,7 @@ export class ChangelistsTreeDataProvider
   }
 }
 
-export class Key {
-  constructor(readonly key: string, readonly uri?: vscode.Uri) {}
-}
-
-export class ChangelistItem implements vscode.TreeItem {
+export class ChangelistFolder implements vscode.TreeItem {
   contextValue = 'changelist';
   iconPath = folderIcon;
   tooltip = new vscode.MarkdownString(`$(zap) Changelist: ${this.key}`, true);
@@ -130,7 +132,7 @@ export class ChangelistFile implements vscode.TreeItem {
   tooltip = `Filename: ${this.key}`;
   command?: vscode.Command;
 
-  constructor(readonly key: string, readonly uri?: vscode.Uri, id?: string) {
+  constructor(readonly key: string, id: string, readonly uri?: vscode.Uri) {
     this.resourceUri = uri;
     this.command =
       key === noFilesPlaceholder

@@ -1,5 +1,4 @@
-import { readFile, writeFile } from 'fs/promises';
-import { resolve } from 'path';
+import { readFile } from 'fs/promises';
 import {
   changelistNameRegex,
   changelistStartRegex,
@@ -8,36 +7,26 @@ import {
   workzoneStartRegex,
 } from '../constants/regexp';
 import { contentToLines, linesToText } from '../utils/string.utils';
-import { GitCommandsManager } from './GitCommands';
-import { GitCommandNamesEnum } from '../enum/git-commands.enum';
+import { GitManager } from './GitManager';
+import { TreeType } from '../view/ChangelistView';
 
 export type Changelist = { lineIndex: number; name: string; files: string[] };
 export type WorkzoneIndexes = { startIndex: number; endIndex: number };
 
+/** @deprecated */
 export class GitExcludeParse {
   content: string = '';
 
   constructor(private readonly gitRootPath: string) {}
 
-  async getGitStatus(): Promise<string[]> {
-    try {
-      const status = await GitCommandsManager.execAsync(
-        GitCommandNamesEnum.status,
-        resolve(this.gitRootPath, '../')
-      );
-
-      return contentToLines(status);
-    } catch (error) {
-      return [];
-    }
-  }
-
+  /** @deprecated */
   async getExcludeContent(): Promise<string> {
     this.content = await FSAPI.getExcludeContent(this.gitRootPath);
 
     return this.content;
   }
 
+  /** @deprecated */
   async getExcludeContentLines(): Promise<string[]> {
     const content = await this.getExcludeContent();
 
@@ -46,6 +35,7 @@ export class GitExcludeParse {
     return lines;
   }
 
+  /** @deprecated */
   static getWorkzoneIndexes(contentLines: string[]): WorkzoneIndexes {
     const startIndex = contentLines.findIndex((line) =>
       workzoneStartRegex.test(line.trim())
@@ -61,6 +51,7 @@ export class GitExcludeParse {
     return { startIndex, endIndex };
   }
 
+  /** @deprecated */
   getWorkzoneLines(contentLines: string[]) {
     const { startIndex, endIndex } =
       GitExcludeParse.getWorkzoneIndexes(contentLines);
@@ -68,6 +59,7 @@ export class GitExcludeParse {
     return contentLines.slice(startIndex + 1, endIndex);
   }
 
+  /** @deprecated */
   checkIfWorkzoneExists(contentLines: string[]) {
     try {
       GitExcludeParse.getWorkzoneIndexes(contentLines);
@@ -78,8 +70,9 @@ export class GitExcludeParse {
     }
   }
 
+  /** @deprecated */
   transformChangelistArrayToTree(changelists: Changelist[]) {
-    const tree = new Map<string, { [key: string]: any }>();
+    const tree = new Map<string, TreeType>();
     changelists.forEach((item) => {
       tree.set(item.name, {
         ...item.files
@@ -93,6 +86,7 @@ export class GitExcludeParse {
     return Object.fromEntries(tree);
   }
 
+  /** @deprecated */
   getChangelistArrayFromContent(contentLines: string[]): Changelist[] {
     const workzoneLines = this.getWorkzoneLines(contentLines);
 
@@ -121,6 +115,7 @@ export class GitExcludeParse {
     return withFiles;
   }
 
+  /** @deprecated */
   getOtherContent(originalContent: string) {
     const lines = contentToLines(originalContent);
 
@@ -133,10 +128,12 @@ export class GitExcludeParse {
   }
 }
 
+/** @deprecated */
 export class GitExcludeStringify {
   constructor(private readonly gitRootPath: string) {}
 
-  prepareExcludeContent(oldContent: string, tree: { [key: string]: any } = {}) {
+  /** @deprecated */
+  prepareExcludeContent(oldContent: string, tree: TreeType = {}) {
     const startWZLine = removeSpecialSymbs(workzoneStartRegex.source);
     const endWZLine = removeSpecialSymbs(workzoneEndRegex.source);
 
@@ -151,7 +148,8 @@ ${endWZLine}
 `;
   }
 
-  treeToLines(tree: { [key: string]: any }) {
+  /** @deprecated */
+  treeToLines(tree: TreeType) {
     return Object.entries(tree)
       .map(([name, items]) => {
         return [
@@ -168,49 +166,17 @@ ${endWZLine}
       .flat(2);
   }
 
-  treeToText(tree: { [key: string]: any }) {
+  /** @deprecated */
+  treeToText(tree: TreeType) {
     return linesToText(this.treeToLines(tree));
-  }
-
-  // unused
-  replaceWorkzoneInContent(contentLines: string[], treeLines: string[]) {
-    const { startIndex, endIndex } =
-      GitExcludeParse.getWorkzoneIndexes(contentLines);
-
-    contentLines.splice(
-      startIndex + 1,
-      endIndex - startIndex - 1,
-      ...treeLines
-    );
-
-    return contentLines;
-  }
-
-  // unused
-  async writeNewExcludeContent(treeLines: string[]) {
-    const content = await FSAPI.getExcludeContent(this.gitRootPath);
-
-    const lines = contentToLines(content);
-
-    const newLines = this.replaceWorkzoneInContent(lines, treeLines);
-
-    await FSAPI.writeExclude(this.gitRootPath, newLines.join('\n'));
   }
 }
 
 export class FSAPI {
   static filePath = '/info/exclude';
 
+  /** @deprecated */
   static async getExcludeContent(gitRootPath: string) {
     return await readFile(`${gitRootPath}/${FSAPI.filePath}`, 'utf-8');
-  }
-
-  // unused
-  static async writeExclude(gitRootPath: string, content: string) {
-    return await writeFile(
-      `${gitRootPath}/${FSAPI.filePath}`,
-      content,
-      'utf-8'
-    );
   }
 }
