@@ -21,7 +21,7 @@ export class ChangelistsTreeDataProvider
   constructor(
     private readonly parent: {
       tree: TreeType;
-      nodes: TreeType;
+      nodes: { [key: string]: Key | undefined };
     },
     private readonly id: string,
     private readonly workspacePath: vscode.Uri
