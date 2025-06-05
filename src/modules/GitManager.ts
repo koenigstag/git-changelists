@@ -5,6 +5,7 @@ import { GitCommandsManager } from './GitCommands';
 import { GitCommandNamesEnum } from '../enum/git-commands.enum';
 import { resolve } from 'path';
 import { Uri, workspace } from 'vscode';
+import { logger } from '../core/logger';
 
 export class GitManager {
   static isGitInitialized(path?: string) {
@@ -30,6 +31,10 @@ export class GitManager {
 
       return contentToLines(status);
     } catch (error) {
+      logger.appendLine(
+        `[Error] Error while getting git status: ${(error as Error).message}`,
+      );
+
       return [];
     }
   }
