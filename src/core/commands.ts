@@ -14,7 +14,7 @@ import {
   initializingExtFiles,
   newChangelistPlaceholder,
   renameChangelist,
-  selectChagelistToAddFile,
+  selectChangelistToAddFile,
   workspaceNotFound,
   workspaceNotTrusted,
 } from '../constants/messages';
@@ -355,7 +355,7 @@ function registerCommands(options: {
 
       const changelistName = await window.showQuickPick(
         Object.keys(ChangeListView.tree),
-        { title: selectChagelistToAddFile }
+        { title: selectChangelistToAddFile }
       );
 
       if (!changelistName) {

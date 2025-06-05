@@ -36,7 +36,7 @@ export const fileWasAddedToChangelist =
 export const fileWasRemovedFromChangelist =
   'File was removed from "{changelist}" changelist.';
 
-export const selectChagelistToAddFile =
+export const selectChangelistToAddFile =
   'Select Changelist where you want to add file';
 
 export const newChangelistPlaceholder = 'New Changelist name';
