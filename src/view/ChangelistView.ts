@@ -330,7 +330,8 @@ export class ChangeListView {
 
   public async syncTreeToConfig() {
     const newJsonConfig = this.jsonConfigModule.treeToJSONConfig(
-      ChangeListView.tree
+      ChangeListView.tree,
+      this.jsonConfigModule.getConfig()
     );
 
     await this.writeContentToConfigFile(newJsonConfig);
