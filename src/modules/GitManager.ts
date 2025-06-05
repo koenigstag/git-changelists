@@ -22,8 +22,8 @@ export class GitManager {
 
   static async getGitStatus(gitFolderPath: Uri): Promise<string[]> {
     try {
-      const path = gitFolderPath.fsPath;
-      const rootPath = path.includes('.git') ? resolve(path, '../') : path;
+      const gitPath = gitFolderPath.fsPath;
+      const rootPath = gitPath.includes('.git') ? resolve(gitPath, '../') : gitPath;
       const status = await GitCommandsManager.execAsync(
         GitCommandNamesEnum.status,
         rootPath,

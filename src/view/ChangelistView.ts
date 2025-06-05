@@ -90,6 +90,11 @@ export class ChangeListView {
       canSelectMany: true,
     });
     context.subscriptions.push(ChangeListView.view);
+    ChangeListView.view.dispose = () => {
+      this.dispose();
+      ChangeListView.view.dispose.call(ChangeListView.view);
+      ChangeListView.view = null as any;
+    };
 
     workspace.onDidChangeTextDocument((e) => {
       const { document } = e;
@@ -350,5 +355,12 @@ export class ChangeListView {
     );
 
     await this.writeContentToConfigFile(newJsonConfig);
+  }
+
+  public dispose() {
+    if (this.refreshTimerId) {
+      clearTimeout(this.refreshTimerId);
+      this.refreshTimerId = null;
+    }
   }
 }
