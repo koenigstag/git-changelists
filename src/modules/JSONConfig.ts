@@ -50,7 +50,10 @@ export class ChangelistConfig {
       return false;
     }
 
-    if (this.files.some((file, index) => file !== prev.files[index])) {
+    const sortedFiles = this.files.slice().sort();
+    const prevSortedFiles = prev.files.slice().sort();
+
+    if (sortedFiles.some((file, index) => file !== prevSortedFiles[index])) {
       return false;
     }
 
