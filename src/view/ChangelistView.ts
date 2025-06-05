@@ -34,7 +34,6 @@ export class ChangeListView {
   jsonConfigModule: JSONConfigModule;
 
   parser: GitExcludeParse;
-  // stringify: GitExcludeStringify;
 
   public async refresh(fromFile?: boolean) {
     if (fromFile) {
@@ -64,7 +63,6 @@ export class ChangeListView {
 
     this.jsonConfigModule = new JSONConfigModule(workspaceRootUri);
     this.parser = new GitExcludeParse(gitRootPath);
-    // this.stringify = new GitExcludeStringify(gitRootPath);
     ChangeListView.provider = new ChangelistsTreeDataProvider(
       ChangeListView,
       id,
@@ -331,7 +329,7 @@ export class ChangeListView {
   public async syncTreeToConfig() {
     const newJsonConfig = this.jsonConfigModule.treeToJSONConfig(
       ChangeListView.tree,
-      this.jsonConfigModule.getConfig()
+      await this.jsonConfigModule.getConfig()
     );
 
     await this.writeContentToConfigFile(newJsonConfig);

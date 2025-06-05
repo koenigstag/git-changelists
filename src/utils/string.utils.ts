@@ -1,7 +1,7 @@
 import { resolve } from 'path';
 import { newLineRegex, pathDelim } from '../constants/regexp';
 
-export const randomString = (length: number) => {
+export const randomString = (length = 10) => {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
   for (let i = 0; i < length; i++) {

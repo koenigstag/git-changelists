@@ -6,6 +6,8 @@ import { logger } from '../core/logger';
 import { TreeType } from '../view/ChangelistView';
 import { TextDecoder, TextEncoder } from 'util';
 
+const getRandomId = () => randomString(10);
+
 export class ChangelistConfig {
   public id: string;
   public name: string;
@@ -14,7 +16,7 @@ export class ChangelistConfig {
   public createdAt: string;
 
   public init(data: Partial<ChangelistConfig>) {
-    this.id = data.id || `${randomString(10)}`;
+    this.id = data.id || `${getRandomId()}`;
     this.name = data.name || defaultChangelistName;
     this.files = data.files || [];
     this.description = data.description || '';
@@ -202,14 +204,14 @@ export class JSONConfigModule {
     return false;
   }
 
-  treeToJSONConfig(tree: TreeType, prevConfig?: JSONConfig): JSONConfig {
+  treeToJSONConfig(tree: TreeType, prevConfig?: JSONConfig | null): JSONConfig {
     const changelists = Object.entries(tree).map(([name, items]) => {
       const existingChangelist = prevConfig?.changelists.find(
         (changelist) => changelist.name === name
       );
       const changelist = new ChangelistConfig();
       changelist.init({
-        id: existingChangelist?.id || randomString(),
+        id: existingChangelist?.id || `${getRandomId()}`,
         name,
         files: Object.keys(items)?.length ? Object.keys(items) : [],
       });
