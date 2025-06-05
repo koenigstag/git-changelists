@@ -202,10 +202,14 @@ export class JSONConfigModule {
     return false;
   }
 
-  treeToJSONConfig(tree: TreeType): JSONConfig {
+  treeToJSONConfig(tree: TreeType, prevConfig?: JSONConfig): JSONConfig {
     const changelists = Object.entries(tree).map(([name, items]) => {
+      const existingChangelist = prevConfig?.changelists.find(
+        (changelist) => changelist.name === name
+      );
       const changelist = new ChangelistConfig();
       changelist.init({
+        id: existingChangelist?.id || randomString(),
         name,
         files: Object.keys(items)?.length ? Object.keys(items) : [],
       });
