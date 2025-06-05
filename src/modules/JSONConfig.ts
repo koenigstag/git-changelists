@@ -187,8 +187,6 @@ export class JSONConfigModule {
 
       throw error;
     }
-
-    return false;
   }
 
   static async checkIfConfigExists(rootPath: vscode.Uri): Promise<boolean> {
