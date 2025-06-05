@@ -128,54 +128,9 @@ export class GitExcludeParse {
   }
 }
 
-/** @deprecated */
-export class GitExcludeStringify {
-  constructor(private readonly gitRootPath: string) {}
-
-  /** @deprecated */
-  prepareExcludeContent(oldContent: string, tree: TreeType = {}) {
-    const startWZLine = removeSpecialSymbs(workzoneStartRegex.source);
-    const endWZLine = removeSpecialSymbs(workzoneEndRegex.source);
-
-    const text = this.treeToText(tree);
-
-    return `${oldContent.trim()}
-
-${startWZLine}
-${text}
-
-${endWZLine}
-`;
-  }
-
-  /** @deprecated */
-  treeToLines(tree: TreeType) {
-    return Object.entries(tree)
-      .map(([name, items]) => {
-        return [
-          '\n' +
-            removeSpecialSymbs(
-              changelistStartRegex.source.replace(
-                changelistNameRegex.source,
-                name
-              )
-            ),
-          ...Object.keys(items),
-        ];
-      })
-      .flat(2);
-  }
-
-  /** @deprecated */
-  treeToText(tree: TreeType) {
-    return linesToText(this.treeToLines(tree));
-  }
-}
-
 export class FSAPI {
   static filePath = '/info/exclude';
 
-  /** @deprecated */
   static async getExcludeContent(gitRootPath: string) {
     return await readFile(`${gitRootPath}/${FSAPI.filePath}`, 'utf-8');
   }
