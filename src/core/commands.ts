@@ -82,9 +82,8 @@ const registerCommand = (
 
       await viewInstance.onTreeChange();
     } catch (error: unknown) {
-      console.error(
-        `Error while running handler of command '${command}: '`,
-        error
+      logger.appendLine(
+        `[ERR] Error while running handler of command '${command}: ' ${(error as Error).message}`,
       );
     }
   });

@@ -148,7 +148,7 @@ export class JSONConfigModule {
       const uintArray = await vscode.workspace.fs.readFile(fullPath);
       fileContent = new TextDecoder('utf-8').decode(uintArray);
     } catch (error) {
-      console.error('Error reading JSON config file:', error);
+      logger.appendLine(`[ERR] Error reading JSON config file: ${(error as Error).message}`);
 
       throw error;
     }
@@ -159,7 +159,7 @@ export class JSONConfigModule {
 
       return newConfig.init(parsedContent);
     } catch (error) {
-      console.error('Error parsing JSON config file:', error);
+      logger.appendLine(`[ERR] Error parsing JSON config file: ${(error as Error).message}`);
 
       throw error;
     }
