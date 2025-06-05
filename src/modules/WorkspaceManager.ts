@@ -21,6 +21,10 @@ export class WorkspaceManager {
     return this.workspaceFolders?.[0].uri.fsPath;
   }
 
+  static get workspaceRootUri(): vscode.Uri | undefined {
+    return this.workspaceFolders?.[0].uri;
+  }
+
   static get workspaceConfig(): vscode.WorkspaceConfiguration {
     return this.workspace.getConfiguration();
   }

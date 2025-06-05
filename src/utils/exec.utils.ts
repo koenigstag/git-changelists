@@ -1,4 +1,5 @@
-import { ExecException, exec, execSync } from 'child_process';
+import { exec, execSync } from 'child_process';
+import { logger } from '../core/logger';
 
 export const childExecAsync = (
   command: string,
@@ -11,7 +12,7 @@ export const childExecAsync = (
       (error, stdout, stderr) => {
         if (error) {
           reject(error);
-          console.error(stderr.toString());
+          logger.appendLine(`[ERR] Error when executing command '${command}':  ${stderr.toString()}`);
         } else {
           resolve(stdout.toString());
         }

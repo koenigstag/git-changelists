@@ -1,22 +1,13 @@
-import {
-  window,
-  TreeView,
-  ExtensionContext,
-  Range,
-  Position,
-  workspace,
-  WorkspaceEdit,
-  Uri,
-} from 'vscode';
+import { window, TreeView, ExtensionContext, workspace, Uri } from 'vscode';
 import { sep, posix } from 'path';
-import { GitExcludeParse, GitExcludeStringify } from '../modules/GitExclude';
-import {
-  contentToLines,
-  getRelativeExcludePath,
-  transformPath,
-} from '../utils/string.utils';
+import { GitExcludeParse } from '../modules/GitExclude';
+import { getRelativeExcludePath, transformPath } from '../utils/string.utils';
 import { ChangelistsTreeDataProvider, Key } from './ChangelistProvider';
-import { emptySymbol, noFilesPlaceholder } from '../constants';
+import {
+  defaultChangelistName,
+  emptySymbol,
+  noFilesPlaceholder,
+} from '../constants';
 import {
   AskToInitAnswers,
   askToInitExtFiles,
@@ -25,6 +16,10 @@ import {
 } from '../constants/messages';
 import { store } from '../core/store';
 import { logger } from '../core/logger';
+import { JSONConfig, JSONConfigModule } from '../modules/JSONConfig';
+import { GitManager } from '../modules/GitManager';
+
+export type TreeType = { [key: string]: any };
 
 export class ChangeListView {
   static view: TreeView<{
@@ -33,13 +28,16 @@ export class ChangeListView {
 
   static provider: ChangelistsTreeDataProvider;
 
-  static tree: { [key: string]: any } = {};
+  static tree: TreeType = {};
   static nodes: { [key: string]: Key | undefined } = {};
 
-  parser: GitExcludeParse;
-  stringify: GitExcludeStringify;
+  jsonConfigModule: JSONConfigModule;
 
-  public async refresh(fromFile?: boolean) {
+  parser: GitExcludeParse;
+
+  private refreshTimerId: NodeJS.Timeout | null = null;
+
+  private async refresh(fromFile?: boolean) {
     if (fromFile) {
       try {
         await this.loadTreeFile();
@@ -48,6 +46,9 @@ export class ChangeListView {
       } catch (error) {
         window.showErrorMessage(cannotReadContent);
         store.isGitRepoFound = false;
+        logger.appendLine(
+          `[Error] Error while refreshing changelist view: ${(error as Error).message}`
+        );
 
         return;
       }
@@ -55,18 +56,32 @@ export class ChangeListView {
     ChangeListView.provider.refresh();
   }
 
+  public async scheduleRefresh(fromFile?: boolean) {
+    if (this.refreshTimerId) {
+      clearTimeout(this.refreshTimerId);
+    }
+
+    this.refreshTimerId = setTimeout(async () => {
+      await this.refresh(fromFile);
+    }, 200);
+  }
+
   constructor(
     context: ExtensionContext,
-    public readonly config: { id: string; gitRootPath: string }
+    public readonly config: {
+      id: string;
+      gitRootPath: string;
+      workspaceRootUri: Uri;
+    }
   ) {
-    const { id, gitRootPath } = this.config;
+    const { id, gitRootPath, workspaceRootUri } = this.config;
 
+    this.jsonConfigModule = new JSONConfigModule(workspaceRootUri);
     this.parser = new GitExcludeParse(gitRootPath);
-    this.stringify = new GitExcludeStringify(gitRootPath);
     ChangeListView.provider = new ChangelistsTreeDataProvider(
       ChangeListView,
       id,
-      gitRootPath.replace('.git', '')
+      workspaceRootUri
     );
 
     ChangeListView.view = window.createTreeView(id, {
@@ -75,6 +90,11 @@ export class ChangeListView {
       canSelectMany: true,
     });
     context.subscriptions.push(ChangeListView.view);
+    ChangeListView.view.dispose = () => {
+      this.dispose();
+      ChangeListView.view.dispose.call(ChangeListView.view);
+      ChangeListView.view = null as any;
+    };
 
     workspace.onDidChangeTextDocument((e) => {
       const { document } = e;
@@ -94,14 +114,18 @@ export class ChangeListView {
             // window.showErrorMessage(cannotWriteContent);
           }
 
-          await this.refresh(true);
+          await this.scheduleRefresh(true);
         }, 300);
       }
     });
   }
 
+  public async getGitStatus(): Promise<string[]> {
+    return await GitManager.getGitStatus(this.config.workspaceRootUri);
+  }
+
   public async isUntracked(filePath: string, lines?: string[]) {
-    const gitStatusLines = lines ?? (await this.parser.getGitStatus());
+    const gitStatusLines = lines ?? (await this.getGitStatus());
 
     return gitStatusLines.some((line) => {
       const status = line.trimStart().split(' ').at(0);
@@ -111,23 +135,56 @@ export class ChangeListView {
   }
 
   public async loadTreeFile() {
+    const success = await this.loadTreeFromJSONConfig();
+
+    if (!success) {
+      logger.appendLine('[WARN] Failed to load tree from JSON config. Falling back to exclude file system.');
+
+      await this.loadTreeFromExcludeFile();
+    }
+  }
+
+  public async loadTreeFromExcludeFile(): Promise<boolean> {
     const lines = await this.parser.getExcludeContentLines();
 
-    if (!this.parser.checkIfWorkzoneExists(lines)) {
-      return;
-    } else {
+    if (this.parser.checkIfWorkzoneExists(lines)) {
       const lists = this.parser.getChangelistArrayFromContent(lines);
       const tree = this.parser.transformChangelistArrayToTree(lists);
 
-      ChangeListView.tree = Object.assign({}, tree, debugTree);
+      ChangeListView.tree = Object.assign({}, tree);
+
+      return true;
     }
+
+    return false;
+  }
+
+  public async loadTreeFromJSONConfig(): Promise<boolean> {
+    if (await this.jsonConfigModule.checkIfConfigExists()) {
+      const jsonConfig = await this.jsonConfigModule.loadConfig();
+
+      if (!jsonConfig) {
+        return false;
+      }
+
+      const tree = this.jsonConfigModule.jsonConfigToTree(jsonConfig);
+
+      ChangeListView.tree = Object.assign({}, tree);
+
+      return true;
+    }
+
+    return false;
   }
 
   public async onTreeChange() {
     try {
-      await this.writeTreeToExclude();
+      await this.syncTreeToConfig();
     } catch (error) {
       window.showErrorMessage(cannotWriteContent);
+      logger.appendLine(
+        `[Error] Error while syncing config file: ${(error as Error).message}`
+      );
     }
   }
 
@@ -139,7 +196,7 @@ export class ChangeListView {
     return name;
   }
 
-  public addNewChangelist(
+  public async addNewChangelist(
     name: string,
     files: string[] = [
       /* noFilesPlaceholder */
@@ -148,22 +205,26 @@ export class ChangeListView {
     const transName = this.transformChangelistName(name);
 
     ChangeListView.tree[transName] = {
-      ...files?.reduce((acc: any, item) => {
-        acc[item] = {};
+      ...files?.reduce((acc: any, filePath) => {
+        acc[filePath] = {};
 
         return acc;
       }, {}),
     };
+
+    await this.scheduleRefresh();
   }
 
-  public removeChangelist(name: string) {
+  public async removeChangelist(name: string) {
     const transName = this.transformChangelistName(name);
 
     delete ChangeListView.tree[transName];
     delete ChangeListView.nodes[transName];
+
+    await this.scheduleRefresh();
   }
 
-  public renameChangelist(name: string, newName: string) {
+  public async renameChangelist(name: string, newName: string) {
     const transName = this.transformChangelistName(name);
 
     const content = ChangeListView.tree[transName];
@@ -171,18 +232,20 @@ export class ChangeListView {
     ChangeListView.tree[newName] = content;
     delete ChangeListView.tree[transName];
     delete ChangeListView.nodes[transName];
+
+    await this.scheduleRefresh();
   }
 
-  public addFileToChangelist(name: string, file: string) {
+  public async addFileToChangelist(name: string, file: string) {
     const transName = this.transformChangelistName(name);
 
     const changelist = ChangeListView.tree[transName];
 
-    const filePath = transformPath(file);
-
     if (!changelist) {
       return;
     }
+
+    const filePath = transformPath(file);
 
     if (Object.keys(changelist).includes(filePath)) {
       return;
@@ -196,9 +259,11 @@ export class ChangeListView {
     ) {
       delete changelist[noFilesPlaceholder];
     }
+
+    await this.scheduleRefresh();
   }
 
-  public removeFileFromChangelist(name: string, file: string) {
+  public async removeFileFromChangelist(name: string, file: string) {
     const transName = this.transformChangelistName(name);
 
     const changelist = ChangeListView.tree[transName];
@@ -212,25 +277,25 @@ export class ChangeListView {
     }
 
     delete changelist[file];
+
+    await this.scheduleRefresh();
   }
 
-  public async isExcludeInitialized() {
-    let lines;
-
+  public async isConfigInitialized() {
     try {
-      lines = await this.parser.getExcludeContentLines();
+      await this.jsonConfigModule.checkIfConfigExists();
       store.isGitRepoFound = true;
+
+      return true;
     } catch (error) {
       window.showErrorMessage(cannotReadContent);
       store.isGitRepoFound = false;
 
       throw error;
     }
-
-    return this.parser.checkIfWorkzoneExists(lines);
   }
 
-  public async askToInitExcludeFile() {
+  public async askToInitConfigFile() {
     const answers = Object.values(AskToInitAnswers);
 
     const choice = await window.showQuickPick(answers, {
@@ -239,11 +304,16 @@ export class ChangeListView {
 
     if (choice === AskToInitAnswers.yes) {
       try {
-        await this.initExcludeFile();
+        await this.initConfigFile();
 
         return true;
       } catch (error) {
         window.showErrorMessage(cannotWriteContent);
+        logger.appendLine(
+          `[Error] Error while initializing config file: ${
+            (error as Error).message
+          }`
+        );
       }
     }
 
@@ -252,66 +322,45 @@ export class ChangeListView {
 
   /* IO methods */
 
-  public async initExcludeFile() {
-    if (await this.isExcludeInitialized()) {
+  public async initConfigFile() {
+    if (await this.isConfigInitialized()) {
       return;
     }
 
-    logger.appendLine('Initializing exclude file...');
+    logger.appendLine('Initializing config file...');
 
-    const oldContent = await this.parser.getExcludeContent();
+    const newJsonConfig = await this.jsonConfigModule.initConfig();
 
-    const newContent = this.stringify.prepareExcludeContent(oldContent, {
-      // eslint-disable-next-line @typescript-eslint/naming-convention
-      Changes: {
-        /* [noFilesPlaceholder]: {} */
-      },
-    });
+    await this.writeContentToConfigFile(newJsonConfig);
 
-    await this.writeTextToExcludeFile(oldContent, newContent);
+    await this.scheduleRefresh(true);
   }
 
-  public async writeTextToExcludeFile(oldContent: string, newContent: string) {
-    if (newContent === oldContent) {
+  public async writeContentToConfigFile(newJsonConfig: JSONConfig) {
+    const oldJsonConfig = (await this.jsonConfigModule.checkIfConfigExists())
+      ? await this.jsonConfigModule.loadConfig()
+      : null;
+
+    if (newJsonConfig?.compare(oldJsonConfig)) {
       return;
     }
 
-    const oldLines = contentToLines(oldContent);
-
-    const wsEdit = new WorkspaceEdit();
-
-    const fileUri = Uri.file(getRelativeExcludePath(this.config.gitRootPath));
-
-    wsEdit.replace(
-      fileUri,
-      new Range(new Position(0, 0), new Position(oldLines.length - 1, 0)),
-      newContent
-    );
-
-    await workspace.applyEdit(wsEdit);
+    await this.jsonConfigModule.writeConfig(newJsonConfig);
   }
 
-  public async writeTreeToExclude() {
-    const oldContent = await this.parser.getExcludeContent();
-
-    const otherContent = this.parser.getOtherContent(oldContent);
-
-    const newContent = this.stringify.prepareExcludeContent(
-      otherContent,
-      ChangeListView.tree
+  public async syncTreeToConfig() {
+    const newJsonConfig = this.jsonConfigModule.treeToJSONConfig(
+      ChangeListView.tree,
+      await this.jsonConfigModule.getConfig()
     );
 
-    await this.writeTextToExcludeFile(oldContent, newContent);
+    await this.writeContentToConfigFile(newJsonConfig);
+  }
+
+  public dispose() {
+    if (this.refreshTimerId) {
+      clearTimeout(this.refreshTimerId);
+      this.refreshTimerId = null;
+    }
   }
 }
-
-const debugTree: any = {
-  /* a: {
-    aa: {},
-    ab: {},
-  },
-  b: {
-    ba: {},
-    bb: {},
-  }, */
-};
