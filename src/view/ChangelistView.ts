@@ -35,7 +35,9 @@ export class ChangeListView {
 
   parser: GitExcludeParse;
 
-  public async refresh(fromFile?: boolean) {
+  private refreshTimerId: NodeJS.Timeout | null = null;
+
+  private async refresh(fromFile?: boolean) {
     if (fromFile) {
       try {
         await this.loadTreeFile();
@@ -44,11 +46,24 @@ export class ChangeListView {
       } catch (error) {
         window.showErrorMessage(cannotReadContent);
         store.isGitRepoFound = false;
+        logger.appendLine(
+          `[Error] Error while refreshing changelist view: ${(error as Error).message}`
+        );
 
         return;
       }
     }
     ChangeListView.provider.refresh();
+  }
+
+  public async scheduleRefresh(fromFile?: boolean) {
+    if (this.refreshTimerId) {
+      clearTimeout(this.refreshTimerId);
+    }
+
+    this.refreshTimerId = setTimeout(async () => {
+      await this.refresh(fromFile);
+    }, 200);
   }
 
   constructor(
@@ -94,7 +109,7 @@ export class ChangeListView {
             // window.showErrorMessage(cannotWriteContent);
           }
 
-          await this.refresh(true);
+          await this.scheduleRefresh(true);
         }, 300);
       }
     });
@@ -118,6 +133,8 @@ export class ChangeListView {
     const success = await this.loadTreeFromJSONConfig();
 
     if (!success) {
+      logger.appendLine('[WARN] Failed to load tree from JSON config. Falling back to exclude file system.');
+
       await this.loadTreeFromExcludeFile();
     }
   }
@@ -190,7 +207,7 @@ export class ChangeListView {
       }, {}),
     };
 
-    await this.refresh();
+    await this.scheduleRefresh();
   }
 
   public async removeChangelist(name: string) {
@@ -199,7 +216,7 @@ export class ChangeListView {
     delete ChangeListView.tree[transName];
     delete ChangeListView.nodes[transName];
 
-    await this.refresh();
+    await this.scheduleRefresh();
   }
 
   public async renameChangelist(name: string, newName: string) {
@@ -211,7 +228,7 @@ export class ChangeListView {
     delete ChangeListView.tree[transName];
     delete ChangeListView.nodes[transName];
 
-    await this.refresh();
+    await this.scheduleRefresh();
   }
 
   public async addFileToChangelist(name: string, file: string) {
@@ -238,7 +255,7 @@ export class ChangeListView {
       delete changelist[noFilesPlaceholder];
     }
 
-    await this.refresh();
+    await this.scheduleRefresh();
   }
 
   public async removeFileFromChangelist(name: string, file: string) {
@@ -256,7 +273,7 @@ export class ChangeListView {
 
     delete changelist[file];
 
-    await this.refresh();
+    await this.scheduleRefresh();
   }
 
   public async isConfigInitialized() {
@@ -311,7 +328,7 @@ export class ChangeListView {
 
     await this.writeContentToConfigFile(newJsonConfig);
 
-    await this.refresh(true);
+    await this.scheduleRefresh(true);
   }
 
   public async writeContentToConfigFile(newJsonConfig: JSONConfig) {

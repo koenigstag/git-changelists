@@ -122,7 +122,7 @@ function registerCommands(options: {
     extComands.refresh,
     viewInstance,
     async () => {
-      await viewInstance.refresh(true);
+      await viewInstance.scheduleRefresh(true);
     },
     {
       checkExcludeInitialized: true,
@@ -193,6 +193,11 @@ function registerCommands(options: {
 
       const status = await viewInstance.getGitStatus();
 
+      if (!status.length) {
+        logger.appendLine('[WARN] No git status found');
+        return;
+      }
+
       await Promise.all(
         Object.keys(files).map(async (fileName) => {
           if (!(await viewInstance.isUntracked(fileName, status))) {
@@ -222,6 +227,11 @@ function registerCommands(options: {
       const filePaths = Object.keys(files);
 
       const status = await viewInstance.getGitStatus();
+
+      if (!status.length) {
+        logger.appendLine('[WARN] No git status found');
+        return;
+      }
 
       await Promise.all(
         Object.keys(files).map(async (fileName) => {

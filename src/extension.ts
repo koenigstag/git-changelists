@@ -70,7 +70,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   if (store.isGitRepoFound) {
     await viewInstance.initConfigFile();
-    await viewInstance.refresh(true);
+    await viewInstance.scheduleRefresh(true);
   }
 }
 
