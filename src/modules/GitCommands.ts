@@ -22,6 +22,14 @@ export class GitCommandsManager {
     return [...GitCommandsEnum[GitCommandNamesEnum.noAssumeUnchanged].split(' '), '--', ...files];
   }
 
+  static [GitCommandNamesEnum.skipWorktree](...files: string[]): string[] {
+    return [...GitCommandsEnum[GitCommandNamesEnum.skipWorktree].split(' '), '--', ...files];
+  }
+
+  static [GitCommandNamesEnum.noSkipWorktree](...files: string[]): string[] {
+    return [...GitCommandsEnum[GitCommandNamesEnum.noSkipWorktree].split(' '), '--', ...files];
+  }
+
   static [GitCommandNamesEnum.checkInitialized](): string[] {
     return GitCommandsEnum[GitCommandNamesEnum.checkInitialized].split(' ');
   }
