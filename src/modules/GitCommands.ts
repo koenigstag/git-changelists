@@ -51,9 +51,10 @@ export class GitCommandsManager {
     result?: string;
     error?: Error;
   }> {
-    logger.appendLine(
-      'Executing command: git ' + this.gitCommand(command, ...args).join(' ')
-    );
+    const printableArgv = this.gitCommand(command, ...args)
+      .map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg))
+      .join(' ');
+    logger.appendLine('Executing command: git ' + printableArgv);
 
     if (command === GitCommandNamesEnum.assumeUnchanged) {
       return {
