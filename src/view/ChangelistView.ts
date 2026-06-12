@@ -10,6 +10,7 @@ import {
 } from 'vscode';
 import { sep, posix } from 'path';
 import { GitExcludeParse, GitExcludeStringify } from '../modules/GitExclude';
+import { GitApiService } from '../modules/GitApiService';
 import {
   contentToLines,
   getRelativeExcludePath,
@@ -100,14 +101,8 @@ export class ChangeListView {
     });
   }
 
-  public async isUntracked(filePath: string, lines?: string[]) {
-    const gitStatusLines = lines ?? (await this.parser.getGitStatus());
-
-    return gitStatusLines.some((line) => {
-      const status = line.trimStart().split(' ').at(0);
-
-      return status === '??' && line.includes(filePath);
-    });
+  public isUntracked(filePath: string) {
+    return GitApiService.isUntracked(filePath);
   }
 
   public async loadTreeFile() {

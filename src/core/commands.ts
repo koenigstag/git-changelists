@@ -191,11 +191,9 @@ function registerCommands(options: {
 
       viewInstance.removeChangelist(changelistName);
 
-      const status = await viewInstance.parser.getGitStatus();
-
       await Promise.all(
         Object.keys(files).map(async (fileName) => {
-          if (!(await viewInstance.isUntracked(fileName, status))) {
+          if (!viewInstance.isUntracked(fileName)) {
             await GitCommandsManager.tryExecAsyncGitCommand(
               GitCommandNamesEnum.noAssumeUnchanged,
               wsPath,
@@ -221,13 +219,11 @@ function registerCommands(options: {
 
       const filePaths = Object.keys(files);
 
-      const status = await viewInstance.parser.getGitStatus();
-
       await Promise.all(
         Object.keys(files).map(async (fileName) => {
           viewInstance.removeFileFromChangelist(changelistName, fileName);
 
-          if (!(await viewInstance.isUntracked(fileName, status))) {
+          if (!viewInstance.isUntracked(fileName)) {
             await GitCommandsManager.tryExecAsyncGitCommand(
               GitCommandNamesEnum.noAssumeUnchanged,
               wsPath,
@@ -278,7 +274,7 @@ function registerCommands(options: {
 
     await viewInstance.onTreeChange();
 
-    if (!(await viewInstance.isUntracked(fileName))) {
+    if (!viewInstance.isUntracked(fileName)) {
       await GitCommandsManager.tryExecAsyncGitCommand(
         GitCommandNamesEnum.noAssumeUnchanged,
         wsPath,
@@ -323,7 +319,7 @@ function registerCommands(options: {
 
     await viewInstance.onTreeChange();
 
-    if (!(await viewInstance.isUntracked(fileName))) {
+    if (!viewInstance.isUntracked(fileName)) {
       await GitCommandsManager.tryExecAsyncGitCommand(
         GitCommandNamesEnum.noAssumeUnchanged,
         wsPath,

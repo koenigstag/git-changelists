@@ -1,18 +1,10 @@
-import { execFileSync } from 'child_process';
 import { WorkspaceManager } from './WorkspaceManager';
 import { addGitToPath } from '../utils/string.utils';
+import { GitApiService } from './GitApiService';
 
 export class GitManager {
-  static isGitInitialized(path?: string) {
-    try {
-      execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
-        encoding: 'utf-8',
-        cwd: path,
-      });
-      return true;
-    } catch (error) {
-      return false;
-    }
+  static isGitInitialized(path?: string): boolean {
+    return GitApiService.hasRepository(path);
   }
 
   static getLegacyGitRepoPath(workspaceRootPath?: string): string {

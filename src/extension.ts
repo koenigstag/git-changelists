@@ -6,6 +6,7 @@ import registerCommands from './core/commands';
 import { store } from './core/store';
 import { logger } from './core/logger';
 import { GitManager } from './modules/GitManager';
+import { GitApiService } from './modules/GitApiService';
 import { WorkspaceManager } from './modules/WorkspaceManager';
 import { EXTENSION_ID } from './constants/extension';
 
@@ -45,6 +46,8 @@ export async function activate(context: vscode.ExtensionContext) {
   /*  */
 
   let gitRootPath = GitManager.getLegacyGitRepoPath(workspaceRootPath); // TODO: fix in case of multiple git repos
+
+  await GitApiService.initialize();
 
   const gitEnabled = WorkspaceManager.workspaceGitEnabled;
 

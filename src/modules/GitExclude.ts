@@ -1,5 +1,4 @@
 import { readFile, writeFile } from 'fs/promises';
-import { resolve } from 'path';
 import {
   changelistNameRegex,
   changelistStartRegex,
@@ -8,8 +7,6 @@ import {
   workzoneStartRegex,
 } from '../constants/regexp';
 import { contentToLines, linesToText } from '../utils/string.utils';
-import { GitCommandsManager } from './GitCommands';
-import { GitCommandNamesEnum } from '../enum/git-commands.enum';
 
 export type Changelist = { lineIndex: number; name: string; files: string[] };
 export type WorkzoneIndexes = { startIndex: number; endIndex: number };
@@ -18,19 +15,6 @@ export class GitExcludeParse {
   content: string = '';
 
   constructor(private readonly gitRootPath: string) {}
-
-  async getGitStatus(): Promise<string[]> {
-    try {
-      const status = await GitCommandsManager.execAsync(
-        GitCommandNamesEnum.status,
-        resolve(this.gitRootPath, '../')
-      );
-
-      return contentToLines(status);
-    } catch (error) {
-      return [];
-    }
-  }
 
   async getExcludeContent(): Promise<string> {
     this.content = await FSAPI.getExcludeContent(this.gitRootPath);
