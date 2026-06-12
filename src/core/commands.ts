@@ -199,6 +199,11 @@ function registerCommands(options: {
               wsPath,
               fileName
             );
+            await GitCommandsManager.tryExecAsyncGitCommand(
+              GitCommandNamesEnum.noSkipWorktree,
+              wsPath,
+              fileName
+            );
           }
         })
       );
@@ -226,6 +231,11 @@ function registerCommands(options: {
           if (!viewInstance.isUntracked(fileName)) {
             await GitCommandsManager.tryExecAsyncGitCommand(
               GitCommandNamesEnum.noAssumeUnchanged,
+              wsPath,
+              fileName
+            );
+            await GitCommandsManager.tryExecAsyncGitCommand(
+              GitCommandNamesEnum.noSkipWorktree,
               wsPath,
               fileName
             );
@@ -280,6 +290,11 @@ function registerCommands(options: {
         wsPath,
         fileName
       );
+      await GitCommandsManager.tryExecAsyncGitCommand(
+        GitCommandNamesEnum.noSkipWorktree,
+        wsPath,
+        fileName
+      );
 
       // if (result.succeeded) {
       //   const text = fileWasRestored.replace('{file}', fileName);
@@ -322,6 +337,11 @@ function registerCommands(options: {
     if (!viewInstance.isUntracked(fileName)) {
       await GitCommandsManager.tryExecAsyncGitCommand(
         GitCommandNamesEnum.noAssumeUnchanged,
+        wsPath,
+        fileName
+      );
+      await GitCommandsManager.tryExecAsyncGitCommand(
+        GitCommandNamesEnum.noSkipWorktree,
         wsPath,
         fileName
       );
@@ -375,19 +395,15 @@ function registerCommands(options: {
       const text = fileWasAddedToChangelist.replace('{file}', fileName).replace('{changelist}', changelistName);
       window.showInformationMessage(text);
 
-      // deprecated flow
-      // if (!(await viewInstance.isUntracked(fileName))) {
-      //   const result = await GitCommandsManager.tryExecAsyncGitCommand(
-      //     GitCommandNamesEnum.assumeUnchanged,
-      //     wsPath,
-      //     fileName
-      //   );
-
-      //   if (result.succeeded) {
-      //     const text = fileAssumedUnchanged.replace('{file}', fileName).replace('{changelist}', changelistName);
-      //     window.showInformationMessage(text);
-      //   }
-      // }
+      // tracked files: hide local changes from git via skip-worktree
+      // (untracked files are already hidden by their .git/info/exclude entry)
+      if (!viewInstance.isUntracked(fileName)) {
+        await GitCommandsManager.tryExecAsyncGitCommand(
+          GitCommandNamesEnum.skipWorktree,
+          wsPath,
+          fileName
+        );
+      }
     }
   );
 }
