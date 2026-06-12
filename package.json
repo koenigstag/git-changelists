@@ -26,6 +26,9 @@
     "onView:git-changelists.views.explorer"
   ],
   "main": "./out/extension.js",
+  "extensionDependencies": [
+    "vscode.git"
+  ],
   "contributes": {
     "commands": [
       {

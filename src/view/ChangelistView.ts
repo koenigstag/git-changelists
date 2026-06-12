@@ -10,6 +10,7 @@ import {
 } from 'vscode';
 import { sep, posix } from 'path';
 import { GitExcludeParse, GitExcludeStringify } from '../modules/GitExclude';
+import { GitApiService } from '../modules/GitApiService';
 import {
   contentToLines,
   getRelativeExcludePath,
@@ -88,26 +89,23 @@ export class ChangeListView {
         setTimeout(async () => {
           try {
             if (!document.isClosed) {
-              document.save();
+              await document.save();
             }
           } catch (error) {
             // window.showErrorMessage(cannotWriteContent);
           }
 
           await this.refresh(true);
+          // exclude is now on disk → refresh built-in Git view (untracked paths
+          // written to .git/info/exclude become ignored and leave the SCM view)
+          await GitApiService.refresh();
         }, 300);
       }
     });
   }
 
-  public async isUntracked(filePath: string, lines?: string[]) {
-    const gitStatusLines = lines ?? (await this.parser.getGitStatus());
-
-    return gitStatusLines.some((line) => {
-      const status = line.trimStart().split(' ').at(0);
-
-      return status === '??' && line.includes(filePath);
-    });
+  public isUntracked(filePath: string) {
+    return GitApiService.isUntracked(filePath);
   }
 
   public async loadTreeFile() {

@@ -191,13 +191,16 @@ function registerCommands(options: {
 
       viewInstance.removeChangelist(changelistName);
 
-      const status = await viewInstance.parser.getGitStatus();
-
       await Promise.all(
         Object.keys(files).map(async (fileName) => {
-          if (!(await viewInstance.isUntracked(fileName, status))) {
+          if (!viewInstance.isUntracked(fileName)) {
             await GitCommandsManager.tryExecAsyncGitCommand(
               GitCommandNamesEnum.noAssumeUnchanged,
+              wsPath,
+              fileName
+            );
+            await GitCommandsManager.tryExecAsyncGitCommand(
+              GitCommandNamesEnum.noSkipWorktree,
               wsPath,
               fileName
             );
@@ -221,15 +224,18 @@ function registerCommands(options: {
 
       const filePaths = Object.keys(files);
 
-      const status = await viewInstance.parser.getGitStatus();
-
       await Promise.all(
         Object.keys(files).map(async (fileName) => {
           viewInstance.removeFileFromChangelist(changelistName, fileName);
 
-          if (!(await viewInstance.isUntracked(fileName, status))) {
+          if (!viewInstance.isUntracked(fileName)) {
             await GitCommandsManager.tryExecAsyncGitCommand(
               GitCommandNamesEnum.noAssumeUnchanged,
+              wsPath,
+              fileName
+            );
+            await GitCommandsManager.tryExecAsyncGitCommand(
+              GitCommandNamesEnum.noSkipWorktree,
               wsPath,
               fileName
             );
@@ -278,9 +284,14 @@ function registerCommands(options: {
 
     await viewInstance.onTreeChange();
 
-    if (!(await viewInstance.isUntracked(fileName))) {
+    if (!viewInstance.isUntracked(fileName)) {
       await GitCommandsManager.tryExecAsyncGitCommand(
         GitCommandNamesEnum.noAssumeUnchanged,
+        wsPath,
+        fileName
+      );
+      await GitCommandsManager.tryExecAsyncGitCommand(
+        GitCommandNamesEnum.noSkipWorktree,
         wsPath,
         fileName
       );
@@ -323,9 +334,14 @@ function registerCommands(options: {
 
     await viewInstance.onTreeChange();
 
-    if (!(await viewInstance.isUntracked(fileName))) {
+    if (!viewInstance.isUntracked(fileName)) {
       await GitCommandsManager.tryExecAsyncGitCommand(
         GitCommandNamesEnum.noAssumeUnchanged,
+        wsPath,
+        fileName
+      );
+      await GitCommandsManager.tryExecAsyncGitCommand(
+        GitCommandNamesEnum.noSkipWorktree,
         wsPath,
         fileName
       );
@@ -379,19 +395,15 @@ function registerCommands(options: {
       const text = fileWasAddedToChangelist.replace('{file}', fileName).replace('{changelist}', changelistName);
       window.showInformationMessage(text);
 
-      // deprecated flow
-      // if (!(await viewInstance.isUntracked(fileName))) {
-      //   const result = await GitCommandsManager.tryExecAsyncGitCommand(
-      //     GitCommandNamesEnum.assumeUnchanged,
-      //     wsPath,
-      //     fileName
-      //   );
-
-      //   if (result.succeeded) {
-      //     const text = fileAssumedUnchanged.replace('{file}', fileName).replace('{changelist}', changelistName);
-      //     window.showInformationMessage(text);
-      //   }
-      // }
+      // tracked files: hide local changes from git via skip-worktree
+      // (untracked files are already hidden by their .git/info/exclude entry)
+      if (!viewInstance.isUntracked(fileName)) {
+        await GitCommandsManager.tryExecAsyncGitCommand(
+          GitCommandNamesEnum.skipWorktree,
+          wsPath,
+          fileName
+        );
+      }
     }
   );
 }
