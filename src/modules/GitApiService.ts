@@ -72,6 +72,11 @@ export class GitApiService {
     return !!this.getRepository(target);
   }
 
+  // forces the built-in Git extension to re-read state so its SCM view repaints
+  static async refresh(target?: vscode.Uri | string): Promise<void> {
+    await this.getRepository(target)?.status();
+  }
+
   static isUntracked(filePath: string, target?: vscode.Uri | string): boolean {
     const repository = this.getRepository(target);
     if (!repository) {
