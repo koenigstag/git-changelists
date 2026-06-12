@@ -1,11 +1,11 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { WorkspaceManager } from './WorkspaceManager';
 import { addGitToPath } from '../utils/string.utils';
 
 export class GitManager {
   static isGitInitialized(path?: string) {
     try {
-      execSync('git rev-parse --is-inside-work-tree', {
+      execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
         encoding: 'utf-8',
         cwd: path,
       });

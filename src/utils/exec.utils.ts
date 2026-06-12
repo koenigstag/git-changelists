@@ -1,12 +1,14 @@
-import { ExecException, exec, execSync } from 'child_process';
+import { execFile, execFileSync } from 'child_process';
 
 export const childExecAsync = (
   command: string,
+  args: string[],
   options: { cwd?: string; encoding?: BufferEncoding } = {}
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
-    exec(
+    execFile(
       command,
+      args,
       { cwd: options.cwd, encoding: options.encoding || 'utf-8' },
       (error, stdout, stderr) => {
         if (error) {
@@ -22,12 +24,13 @@ export const childExecAsync = (
 
 export const childExecSync = (
   command: string,
+  args: string[],
   options: {
     cwd?: string;
     encoding?: BufferEncoding;
   } = {}
 ): string => {
-  const stdout = execSync(command, {
+  const stdout = execFileSync(command, args, {
     cwd: options.cwd,
     encoding: options.encoding || 'utf-8',
   });
