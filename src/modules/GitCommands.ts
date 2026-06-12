@@ -1,4 +1,3 @@
-import { exec } from 'child_process';
 import {
   GitCommandNamesEnum,
   GitCommandsEnum,
@@ -7,34 +6,28 @@ import { childExecAsync, childExecSync } from '../utils/exec.utils';
 import { logger } from '../core/logger';
 
 export class GitCommandsManager {
-  static [GitCommandNamesEnum.add](...files: string[]) {
-    return `${GitCommandsEnum[GitCommandNamesEnum.add]} ${files.join(' ')}`;
+  static [GitCommandNamesEnum.add](...files: string[]): string[] {
+    return [...GitCommandsEnum[GitCommandNamesEnum.add].split(' '), '--', ...files];
   }
 
-  static [GitCommandNamesEnum.addForce](...files: string[]) {
-    return `${GitCommandsEnum[GitCommandNamesEnum.addForce]} ${files.join(
-      ' '
-    )}`;
+  static [GitCommandNamesEnum.addForce](...files: string[]): string[] {
+    return [...GitCommandsEnum[GitCommandNamesEnum.addForce].split(' '), '--', ...files];
   }
 
-  static [GitCommandNamesEnum.assumeUnchanged](...files: string[]) {
-    return `${
-      GitCommandsEnum[GitCommandNamesEnum.assumeUnchanged]
-    } ${files.join(' ')}`;
+  static [GitCommandNamesEnum.assumeUnchanged](...files: string[]): string[] {
+    return [...GitCommandsEnum[GitCommandNamesEnum.assumeUnchanged].split(' '), '--', ...files];
   }
 
-  static [GitCommandNamesEnum.noAssumeUnchanged](...files: string[]) {
-    return `${
-      GitCommandsEnum[GitCommandNamesEnum.noAssumeUnchanged]
-    } ${files.join(' ')}`;
+  static [GitCommandNamesEnum.noAssumeUnchanged](...files: string[]): string[] {
+    return [...GitCommandsEnum[GitCommandNamesEnum.noAssumeUnchanged].split(' '), '--', ...files];
   }
 
-  static [GitCommandNamesEnum.checkInitialized]() {
-    return GitCommandsEnum[GitCommandNamesEnum.checkInitialized];
+  static [GitCommandNamesEnum.checkInitialized](): string[] {
+    return GitCommandsEnum[GitCommandNamesEnum.checkInitialized].split(' ');
   }
 
-  static [GitCommandNamesEnum.status]() {
-    return GitCommandsEnum[GitCommandNamesEnum.status];
+  static [GitCommandNamesEnum.status](): string[] {
+    return GitCommandsEnum[GitCommandNamesEnum.status].split(' ');
   }
 
   static async execAsync(
@@ -42,11 +35,11 @@ export class GitCommandsManager {
     cwd?: string,
     ...args: string[]
   ) {
-    return childExecAsync(this.gitCommand(command, ...args), { cwd });
+    return childExecAsync('git', this.gitCommand(command, ...args), { cwd });
   }
 
   static exec(command: GitCommandNamesEnum, cwd?: string, ...args: string[]) {
-    return childExecSync(this.gitCommand(command, ...args), { cwd });
+    return childExecSync('git', this.gitCommand(command, ...args), { cwd });
   }
 
   static async tryExecAsyncGitCommand(
@@ -58,9 +51,10 @@ export class GitCommandsManager {
     result?: string;
     error?: Error;
   }> {
-    logger.appendLine(
-      'Executing command: ' + this.gitCommand(command, ...args)
-    );
+    const printableArgv = this.gitCommand(command, ...args)
+      .map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg))
+      .join(' ');
+    logger.appendLine('Executing command: git ' + printableArgv);
 
     if (command === GitCommandNamesEnum.assumeUnchanged) {
       return {
@@ -88,11 +82,11 @@ export class GitCommandsManager {
   private static gitCommand(
     command: GitCommandNamesEnum,
     ...args: string[]
-  ): string {
+  ): string[] {
     if (!(this as any)[command]) {
       throw new Error(`Git command ${command} not found`);
     }
 
-    return `git ${(this as any)[command]?.(...args)}`;
+    return (this as any)[command]?.(...args);
   }
 }
