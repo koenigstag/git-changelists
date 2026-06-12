@@ -89,13 +89,16 @@ export class ChangeListView {
         setTimeout(async () => {
           try {
             if (!document.isClosed) {
-              document.save();
+              await document.save();
             }
           } catch (error) {
             // window.showErrorMessage(cannotWriteContent);
           }
 
           await this.refresh(true);
+          // exclude is now on disk → refresh built-in Git view (untracked paths
+          // written to .git/info/exclude become ignored and leave the SCM view)
+          await GitApiService.refresh();
         }, 300);
       }
     });

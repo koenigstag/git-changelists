@@ -24,7 +24,6 @@ import { WorkspaceManager } from '../modules/WorkspaceManager';
 import { extComands } from '../constants/extension';
 import { GitCommandNamesEnum } from '../enum/git-commands.enum';
 import { GitCommandsManager } from '../modules/GitCommands';
-import { GitApiService } from '../modules/GitApiService';
 
 async function checkPrerequisites(
   viewInstance: ChangeListView,
@@ -82,9 +81,6 @@ const registerCommand = (
       await handler(param);
 
       await viewInstance.onTreeChange();
-
-      // nudge the built-in Git view to repaint after the changelist operation
-      await GitApiService.refresh();
     } catch (error: unknown) {
       console.error(
         `Error while running handler of command '${command}: '`,
